@@ -3,3 +3,7 @@
 !/.gitignore
 
 !/docs/**/*.pdf
+
+!/project/*.v
+!/project/cpu.qpf
+!/project/cpu.qsf
