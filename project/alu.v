@@ -20,12 +20,17 @@ module alu(
 	// 9 = 1001 = Divide
 	// A = 1010 = Negate
 	// B = 1011 = Not
-
-	wire [31:0] z_add, z_sub, z_shift_right, z_shift_left, z_rotate_right, z_rotate_left, z_and, z_or, z_negate, z_not;
+	
+	wire [31:0] z_add_sub, z_shift_right, z_shift_left, z_rotate_right, z_rotate_left, z_and, z_or, z_negate, z_not;
 	
 	// ALU Operations
 	
-	// todo: adder/subtractor for add/sub
+	wire add_sub_select; // 1 = Addition, 0 = Subtraction
+	wire add_sub_carry; // Carry out?
+	
+	assign add_sub_select = select[0]; // Checking the low bit is sufficient to differentiate the encodings 0000 (add), 0001 (sub)
+	adder_subtractor add_sub ( .a(a), .b(b), .sum(z_add_sub), .sub(add_sub_select), .c_out(add_sub_carry) );
+	
 	// todo: shift right
 	alu_shift_left shift_left ( .in(a), .shift(b), .out(z_shift_left) );
 	// todo: rotate right
@@ -41,8 +46,8 @@ module alu(
 	
 	always @(*) begin
 		case (select)
-			4'b0000 : z = z_add;
-			4'b0001 : z = z_sub;
+			4'b0000 : z = z_add_sub;
+			4'b0001 : z = z_add_sub;
 			4'b0010 : z = z_shift_right;
 			4'b0011 : z = z_shift_left;
 			4'b0100 : z = z_rotate_right;
@@ -72,6 +77,12 @@ module alu_test;
 	
 		a <= 32'h7C; // 124
 		b <= 32'h7; // 7
+		
+		select <= 4'h0; // Add
+		#1 $display("Test | add | 124 + 7 = 131 | %0d + %0d = %0d", a, b, z);
+		
+		select <= 4'h1; // Subtract
+		#1 $display("Test | add | 124 - 7 = 117 | %0d - %0d = %0d", a, b, z);
 		
 		select <= 4'h3; // Shift Left
 		#1 $display("Test | shift_left | 0000007c << 00000007 = 00003e00 | %h << %h = %h", a, b, z);
