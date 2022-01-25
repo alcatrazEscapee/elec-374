@@ -84,6 +84,8 @@ module alu_test;
 		
 		select <= 4'hB; // Not
 		#1 $display("Test | not | ~0000007c = ffffff83 | ~%h = %h", a, z);
+		
+		$finish;
 	
 	end
 

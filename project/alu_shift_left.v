@@ -32,26 +32,24 @@ module alu_shift_left_test;
 	// Create the target module
 	alu_shift_left target ( .in(in), .shift(shift), .out(out) );
 
+	integer i, a, b;
+	
 	initial begin
-		in <= 32'h19;
-		shift <= 32'h3;
-		#1 $display("Test | shift1 | 25 << 3 = 200 | %d << %d = %d", in, shift, out);
+		// Shift values between [0, 32]
+		for (i = 0; i < 100; i = i + 1) begin
+			in = $random;
+			shift = $urandom % 32;
+			#1 $display("Test | shift 0x%h << 0x%h | 0x%h | 0x%h", in, shift, in << shift, out);
+		end
 		
-		in <= 32'h2439EB;
-		shift <= 32'hE;
-		#1 $display("Test | shift2 | 2374123 << 14 = 242925568 | %d << %d = %d", in, shift, out);
+		// Shift values (generally) >32
+		for (i = 0; i < 100; i = i + 1) begin
+			in = $random;
+			shift = $random;
+			#1 $display("Test | shift_large 0x%h << 0x%h | 0x%h | 0x%h", in, shift, in << shift, out);
+		end
 		
-		in <= 32'b1;
-		shift <= 32'b011111;
-		#1 $display("Test | shift3 | 1 << 31 = 2147483648 | %d << %d = %d", in, shift, out);
-		
-		in <= 32'b1;
-		shift <= 32'b100000;
-		#1 $display("Test | shift4 | 1 << 32 = 0 | %d << %d = %d", in, shift, out);
-		
-		in <= 32'h1;
-		shift <= 32'b1000000;
-		#1 $display("Test | shift_over_32 | 1 << 64 = 0 | %d << %d = %d", in, shift, out);
+		#1;
+		$finish;
 	end
-		
 endmodule
