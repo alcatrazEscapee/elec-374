@@ -1,4 +1,7 @@
-module cpu( input [37:0] dummy_in, output [31:0] dummy_out );
-	// Top level module needs to contain some logic, and instantiate the design?
-	alu_shift_left shl (.in (dummy_in[31:0]), .shift(dummy_in[37:32]), .out(dummy_out) );
+module cpu();
+	// Top level module needs to contain some logic, and instantiate all modules in the hiearchy?
+	wire [31:0] a, b, z, hi, lo;
+	
+	alu _alu ( .a(a), .b(b), .z(z), .hi(hi), .lo(lo) );
+
 endmodule
