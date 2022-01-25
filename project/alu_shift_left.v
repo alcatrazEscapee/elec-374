@@ -38,7 +38,7 @@ module alu_shift_left_test;
 		
 		in <= 32'b1;
 		shift <= 6'b011111;
-		#1 $display("Test | shift3 | 1 << 32 = -1 | %d << %d = %d", in, shift, out);
+		#1 $display("Test | shift3 | 1 << 31 = 2147483648 | %d << %d = %d", in, shift, out);
 		
 		in <= 32'b1;
 		shift <= 6'b100000;
