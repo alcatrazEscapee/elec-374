@@ -36,14 +36,12 @@ def main():
     else:
         print('Usage: setup.py generate <module>')
 
-TEST_DO_TEMPLATE = """
-vlog +acc "{module}.v"
+TEST_DO_TEMPLATE = """vlog +acc "{module}.v"
 vsim -voptargs=+acc work.{module}_test
 run 100ns
 """
 
-TEST_PY_TEMPLATE = """
-import setup
+TEST_PY_TEMPLATE = """import setup
 import unittest
 
 class {module}(unittest.TestCase):
