@@ -16,22 +16,33 @@ endmodule
 
 
 // Testbench
+`timescale 1ns/100ps
 module alu_shift_left_test;
+
+	// Declare inputs and outputs to the DUT (Device Under Test), here called the 'target' module
 	reg [31:0] in;
 	reg [5:0] shift;
 	wire [31:0] out;
 
+	// Create the target module
 	alu_shift_left target ( .in(in), .shift(shift), .out(out) );
 
 	initial begin
-		in <= 32'b1101;
-		shift <= 6'b11;
-		#10
-		in <= 32'b111000001101;
-		shift <= 6'b1001;
-		#10
-		in <= 32'b1101;
-		shift <= 6'b11;
+		in <= 32'h19;
+		shift <= 6'h3;
+		#1 $display("Test | shift1 | 25 << 3 = 200 | %d << %d = %d", in, shift, out);
+		
+		in <= 32'h2439EB;
+		shift <= 6'hE;
+		#1 $display("Test | shift2 | 2374123 << 14 = 242925568 | %d << %d = %d", in, shift, out);
+		
+		in <= 32'b1;
+		shift <= 6'b011111;
+		#1 $display("Test | shift3 | 1 << 32 = -1 | %d << %d = %d", in, shift, out);
+		
+		in <= 32'b1;
+		shift <= 6'b100000;
+		#1 $display("Test | shift4 | 1 << 32 = 0 | %d << %d = %d", in, shift, out);
 	end
 		
 endmodule
