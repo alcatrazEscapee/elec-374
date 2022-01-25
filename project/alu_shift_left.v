@@ -13,3 +13,25 @@ module alu_shift_left (
 	assign out = shift[5] ? 32'b0 : shift_16; // A shift of >=32 bits will always produce all zero output
 
 endmodule
+
+
+// Testbench
+module alu_shift_left_test;
+	reg [31:0] in;
+	reg [5:0] shift;
+	wire [31:0] out;
+
+	alu_shift_left target ( .in(in), .shift(shift), .out(out) );
+
+	initial begin
+		in <= 32'b1101;
+		shift <= 6'b11;
+		#10
+		in <= 32'b111000001101;
+		shift <= 6'b1001;
+		#10
+		in <= 32'b1101;
+		shift <= 6'b11;
+	end
+		
+endmodule
