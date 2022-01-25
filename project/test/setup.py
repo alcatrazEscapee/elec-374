@@ -10,6 +10,11 @@ def vsim(cls):
     i = 1
     while proc.poll() is None:
         output = proc.stdout.readline().decode('utf-8').replace('\r', '').replace('\n', '')
+        if output.startswith('# ** Error:'):
+            test = mock_fail(output)
+            test.__name__ = 'test_vsim_error_%d' % i
+            setattr (cls, test.__name__, test)
+            i += 1
         if output.startswith('# Test'):
             _, name, expected, actual = map(lambda x: ' '.join(x.split()), output.split('|'))
             test = mock(expected, actual, '%s : Expected %s : Actual %s' % (name, expected, actual))
@@ -23,6 +28,11 @@ def vsim(cls):
 def mock(expected, actual, message):
     def apply(self):
         self.assertEqual(expected, actual, message)
+    return apply
+
+def mock_fail(message):
+    def apply(self):
+        self.fail(message)
     return apply
 
 def main():

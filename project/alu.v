@@ -21,15 +21,26 @@ module alu(
 	// A = 1010 = Negate
 	// B = 1011 = Not
 	
-	wire [31:0] z_add_sub, z_shift_right, z_shift_left, z_rotate_right, z_rotate_left, z_and, z_or, z_negate, z_not;
+	wire [31:0] z_add_sub, z_shift_right, z_shift_left, z_rotate_right, z_rotate_left, z_and, z_or, z_not;
 	
 	// ALU Operations
 	
+	wire [31:0] add_sub_a; // The input to the adder: In add, sub, this will be a, but in neg, we force this to zero.
+	wire add_sub_negate; // 1 = add/sub, 0 = neg (it's used as a mask)
 	wire add_sub_select; // 1 = Addition, 0 = Subtraction
 	wire add_sub_carry; // Carry out?
 	
-	assign add_sub_select = select[0]; // Checking the low bit is sufficient to differentiate the encodings 0000 (add), 0001 (sub)
-	adder_subtractor add_sub ( .a(a), .b(b), .sum(z_add_sub), .sub(add_sub_select), .c_out(add_sub_carry) );
+	// Three opcodes that use the adder/subtractor, and the desired select signals:
+	// Op       | select | negate
+	// add 0000 | 0      | 1
+	// sub 0001 | 1      | 1
+	// neg 1010 | 1      | 0
+	assign add_sub_negate = ~select[3];
+	assign add_sub_select = select[0] | select[3];
+	
+	assign add_sub_a = a & {32{add_sub_negate}};
+	
+	adder_subtractor add_sub ( .a(add_sub_a), .b(b), .sum(z_add_sub), .sub(add_sub_select), .c_out(add_sub_carry) );
 	
 	// todo: shift right
 	alu_shift_left shift_left ( .in(a), .shift(b), .out(z_shift_left) );
@@ -39,7 +50,6 @@ module alu(
 	assign z_or = a | b;
 	// todo: multiply (assign directly to hi, lo)
 	// todo: divide (assign directly to hi, lo)
-	// todo: negate
 	assign z_not = ~a;
 	
 	// Multiplex the outputs together
@@ -55,7 +65,7 @@ module alu(
 			4'b0110 : z = z_and;
 			4'b0111 : z = z_or;
 			// No Multiply / Divide
-			4'b1010 : z = z_negate;
+			4'b1010 : z = z_add_sub;
 			4'b1011 : z = z_not;
 			default : z = 32'b0;
 		endcase
@@ -92,6 +102,9 @@ module alu_test;
 		
 		select <= 4'h7; // Or
 		#1 $display("Test | or | 0000007c or 00000007 = 0000007f | %h or %h = %h", a, b, z);
+
+		select <= 4'hA; // Negate
+		#1 $display("Test | neg | -7 = 4294967289 | -%0d = %0d", b, z);
 		
 		select <= 4'hB; // Not
 		#1 $display("Test | not | ~0000007c = ffffff83 | ~%h = %h", a, z);
