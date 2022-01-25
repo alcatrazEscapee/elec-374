@@ -1,9 +1,14 @@
 *
 !*/
 !/.gitignore
+!/README.md
 
 !/docs/**/*.pdf
 
 !/project/*.v
 !/project/cpu.qpf
 !/project/cpu.qsf
+
+# Testing
+!/project/test/*.py
+!/project/test/*.do
