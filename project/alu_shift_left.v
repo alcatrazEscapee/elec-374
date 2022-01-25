@@ -32,20 +32,20 @@ module alu_shift_left_test;
 	// Create the target module
 	alu_shift_left target ( .in(in), .shift(shift), .out(out) );
 
-	integer i, a, b;
+	integer i;
 	
 	initial begin
 		// Shift values between [0, 32]
 		for (i = 0; i < 100; i = i + 1) begin
-			in = $random;
-			shift = $urandom % 32;
+			in <= $random;
+			shift <= $urandom % 32;
 			#1 $display("Test | shift 0x%h << 0x%h | 0x%h | 0x%h", in, shift, in << shift, out);
 		end
 		
 		// Shift values (generally) >32
 		for (i = 0; i < 100; i = i + 1) begin
-			in = $random;
-			shift = $random;
+			in <= $random;
+			shift <= $random;
 			#1 $display("Test | shift_large 0x%h << 0x%h | 0x%h | 0x%h", in, shift, in << shift, out);
 		end
 		
