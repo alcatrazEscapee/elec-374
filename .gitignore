@@ -1,6 +1,7 @@
 *
 !*/
 !/.gitignore
+!/.editorconfig
 !/README.md
 
 !/docs/**/*.pdf
