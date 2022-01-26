@@ -40,7 +40,6 @@ module ripple_carry_adder_test;
 	integer i, j, k;
 	
 	initial begin
-		// 6-Bit RCA: Test all input combinations exhaustively
 		for (i = 0; i < 32; i = i + 1) begin
 			for (j = 0; j < 32; j = j + 1) begin
 				for (k = 0; k <= 1; k = k + 1) begin
