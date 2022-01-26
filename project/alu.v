@@ -48,7 +48,10 @@ module alu(
 	// todo: rotate left
 	assign z_and = a & b;
 	assign z_or = a | b;
-	// todo: multiply (assign directly to hi, lo)
+	
+	// Multiplication
+	booth_bit_pair_multiplier mul ( .multiplicand(a), .multiplier(b), .product({hi, lo}) );
+	
 	// todo: divide (assign directly to hi, lo)
 	assign z_not = ~a;
 	
@@ -92,7 +95,7 @@ module alu_test;
 		#1 $display("Test | add | 124 + 7 = 131 | %0d + %0d = %0d", a, b, z);
 		
 		select <= 4'h1; // Subtract
-		#1 $display("Test | add | 124 - 7 = 117 | %0d - %0d = %0d", a, b, z);
+		#1 $display("Test | sub | 124 - 7 = 117 | %0d - %0d = %0d", a, b, z);
 		
 		select <= 4'h3; // Shift Left
 		#1 $display("Test | shift_left | 0000007c << 00000007 = 00003e00 | %h << %h = %h", a, b, z);
@@ -102,6 +105,9 @@ module alu_test;
 		
 		select <= 4'h7; // Or
 		#1 $display("Test | or | 0000007c or 00000007 = 0000007f | %h or %h = %h", a, b, z);
+		
+		select <= 4'h8; // Multiply
+		#1 $display("Test | mul | 124 * 7 = (lo 868, hi 0) | %0d * %0d = (lo %0d, hi %0d)", a, b, lo, hi);
 
 		select <= 4'hA; // Negate
 		#1 $display("Test | neg | -7 = 4294967289 | -%0d = %0d", b, z);
