@@ -9,7 +9,7 @@ module adder_subtractor(
 	assign b_in = b ^ {32{sub}};
 
 	// Inner adder used by the adder/subtractor is a RCA
-	ripple_carry_adder_32b rca ( .a(a), .b(b_in), .sum(sum), .c_in(sub), .c_out(c_out) );
+	ripple_carry_adder #( .BITS(32) ) rca ( .a(a), .b(b_in), .sum(sum), .c_in(sub), .c_out(c_out) );
 
 endmodule
 

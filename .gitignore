@@ -6,10 +6,12 @@
 
 !/docs/**/*.pdf
 
-!/project/*.v
+!/project/**/*.v
 !/project/cpu.qpf
 !/project/cpu.qsf
 
 # Testing
-!/project/test/*.py
-!/project/test/*.do
+!/project/test/**/*.py
+!/project/test/**/*.do
+
+__pycache__
