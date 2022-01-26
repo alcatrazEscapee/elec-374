@@ -44,30 +44,31 @@ module booth_bit_pair_multiplier(
 	// in order to match their level within the multiplication
 	
 	wire [63:0] sum00, sum01, sum02, sum03, sum04, sum05, sum06, sum07;
+	wire [15:0] c_out; // All upper carry bits ignored, but we cannot just connect them to 0 like we can with c_in
 	
-	adder64 _a00 ( {{31{pp0[32]}},  pp0        }, {{29{pp1[32]}}, pp1,  2'b0},  sum00 );
-	adder64 _a01 ( {{27{pp2[32]}},  pp2,  4'b0 }, {{25{pp3[32]}}, pp3,  6'b0},  sum01 );
-	adder64 _a02 ( {{23{pp4[32]}},  pp4,  8'b0 }, {{21{pp5[32]}}, pp5,  10'b0}, sum02 );
-	adder64 _a03 ( {{19{pp6[32]}},  pp6,  12'b0}, {{17{pp7[32]}}, pp7,  14'b0}, sum03 );
-	adder64 _a04 ( {{15{pp8[32]}},  pp8,  16'b0}, {{13{pp9[32]}}, pp9,  18'b0}, sum04 );
-	adder64 _a05 ( {{11{pp10[32]}}, pp10, 20'b0}, {{9{pp11[32]}}, pp11, 22'b0}, sum05 );
-	adder64 _a06 ( {{7{pp12[32]}},  pp12, 24'b0}, {{5{pp13[32]}}, pp13, 26'b0}, sum06 );
-	adder64 _a07 ( {{3{pp14[32]}},  pp14, 28'b0}, {{1{pp15[32]}}, pp15, 30'b0}, sum07 );
+	ripple_carry_adder #( .BITS(64) ) _a00 ( .a({{31{pp0[32]}},  pp0        }), .b({{29{pp1[32]}}, pp1,  2'b0}),  .sum(sum00), .c_in(1'b0), .c_out(c_out[0]) );
+	ripple_carry_adder #( .BITS(64) ) _a01 ( .a({{27{pp2[32]}},  pp2,  4'b0 }), .b({{25{pp3[32]}}, pp3,  6'b0}),  .sum(sum01), .c_in(1'b0), .c_out(c_out[1]) );
+	ripple_carry_adder #( .BITS(64) ) _a02 ( .a({{23{pp4[32]}},  pp4,  8'b0 }), .b({{21{pp5[32]}}, pp5,  10'b0}), .sum(sum02), .c_in(1'b0), .c_out(c_out[2]) );
+	ripple_carry_adder #( .BITS(64) ) _a03 ( .a({{19{pp6[32]}},  pp6,  12'b0}), .b({{17{pp7[32]}}, pp7,  14'b0}), .sum(sum03), .c_in(1'b0), .c_out(c_out[3]) );
+	ripple_carry_adder #( .BITS(64) ) _a04 ( .a({{15{pp8[32]}},  pp8,  16'b0}), .b({{13{pp9[32]}}, pp9,  18'b0}), .sum(sum04), .c_in(1'b0), .c_out(c_out[4]) );
+	ripple_carry_adder #( .BITS(64) ) _a05 ( .a({{11{pp10[32]}}, pp10, 20'b0}), .b({{9{pp11[32]}}, pp11, 22'b0}), .sum(sum05), .c_in(1'b0), .c_out(c_out[5]) );
+	ripple_carry_adder #( .BITS(64) ) _a06 ( .a({{7{pp12[32]}},  pp12, 24'b0}), .b({{5{pp13[32]}}, pp13, 26'b0}), .sum(sum06), .c_in(1'b0), .c_out(c_out[6]) );
+	ripple_carry_adder #( .BITS(64) ) _a07 ( .a({{3{pp14[32]}},  pp14, 28'b0}), .b({{1{pp15[32]}}, pp15, 30'b0}), .sum(sum07), .c_in(1'b0), .c_out(c_out[7]) );
 	
 	wire [63:0] sum10, sum11, sum12, sum13;
 	
-	adder64 _a10 ( sum00, sum01, sum10 );
-	adder64 _a11 ( sum02, sum03, sum11 );
-	adder64 _a12 ( sum04, sum05, sum12 );
-	adder64 _a13 ( sum06, sum07, sum13 );
+	ripple_carry_adder #( .BITS(64) ) _a10 ( .a(sum00), .b(sum01), .sum(sum10), .c_in(1'b0), .c_out(c_out[8]) );
+	ripple_carry_adder #( .BITS(64) ) _a11 ( .a(sum02), .b(sum03), .sum(sum11), .c_in(1'b0), .c_out(c_out[9]) );
+	ripple_carry_adder #( .BITS(64) ) _a12 ( .a(sum04), .b(sum05), .sum(sum12), .c_in(1'b0), .c_out(c_out[10]) );
+	ripple_carry_adder #( .BITS(64) ) _a13 ( .a(sum06), .b(sum07), .sum(sum13), .c_in(1'b0), .c_out(c_out[11]) );
 	
 	wire [63:0] sum20, sum21;
 	
-	adder64 _a20 ( sum10, sum11, sum20 );
-	adder64 _a21 ( sum12, sum13, sum21 );
+	ripple_carry_adder #( .BITS(64) ) _a20 ( .a(sum10), .b(sum11), .sum(sum20), .c_in(1'b0), .c_out(c_out[12]) );
+	ripple_carry_adder #( .BITS(64) ) _a21 ( .a(sum12), .b(sum13), .sum(sum21), .c_in(1'b0), .c_out(c_out[13]) );
 	
 	// Final adder outputs to the product output of the multiplier
-	adder64 _a30 ( sum20, sum21, product );
+	ripple_carry_adder #( .BITS(64) ) _a30 ( .a(sum20), .b(sum21), .sum(product), .c_in(1'b0), .c_out(c_out[14]) );
 	
 endmodule
 
@@ -82,11 +83,12 @@ module partial_product(
 	output [32:0] product
 );
 
-	wire [32:0] result_c; // Compliment of result
+	wire [32:0] result_c, result_p; // Compliment of result
 	reg [32:0] result;
 	reg negative;
 	
-	negate33 _negate ( result, result_c );
+	assign result_p = result;
+	signed_compliment #( .BITS(33) ) sc ( .in(result_p), .out(result_c) );
 	
 	// Product selects between the compliment and result value, based on the negative flag
 	assign product = negative ? result_c : result;
@@ -144,42 +146,6 @@ module partial_product(
 	end
 
 endmodule
-
-
-/**
- * 33-bit 2's Compliment Negation
- */
-module negate33(
-	input [32:0] in,
-	output [32:0] out
-);
-	// Negation = Invert all bits and add one
-	// Addition is performed with a single carry chain, similar to a RCA if b = 0
-	wire [32:0] carry;
-	
-	assign carry[0] = 1'b1; // c_in = 0
-	assign carry[32:1] = (~in[31:0]) & carry[31:0]; // carry chain, ci+1 = xi & ci
-	assign out = (~in) ^ carry; // summation, s = xi ^ ci
-endmodule
-
-
-/**
- * 64-bit Adder, used specifically for the multiplication summation
- * Implemented as a 64-bit RCA from two 32-bit RCAs, but could in theory be built from any 32-bit RCA
- * Does not implement c_in or c_out
- */
-module adder64(
-	input [63:0] a,
-	input [63:0] b,
-	output [63:0] sum
-);
-	wire c_32, c_64;
-
-	ripple_carry_adder_32b lo ( .a(a[31:0]), .b(b[31:0]), .sum(sum[31:0]), .c_in(1'b0), .c_out(c_32) );
-	ripple_carry_adder_32b hi ( .a(a[63:32]), .b(b[63:32]), .sum(sum[63:32]), .c_in(c_32), .c_out(c_64) );
-
-endmodule
-
 
 
 /**
