@@ -36,7 +36,7 @@ Index | Opcode | Name | Assembly | RTN
 7 | `00111` | Rotate Right | `ror rA, rB, rC` | `rA <- (rB >> rC) or (rB << (32 - rB))`
 8 | `01000` | Rotate Left | `rol rA, rB, rC` | `rA <- (rB << rC) or (rB >> (32 - rB))`
 9 | `01001` | And | `and rA, rB, rC` | `rA <- rB & rC`
-10 | `01010` | Or | `or rA, rB, rC` | `rA <- rB | rC`
+10 | `01010` | Or | `or rA, rB, rC` | `rA <- rB or rC`
 11 | `01011` | Add Immediate | `addi rA, rB, C` | `rA <- rB + C`
 12 | `01100` | And Immediate | `andi rA, rB, C` | `rA <- rB & C`
 13 | `01101` | Or Immediate | `ori rA, rB, C` | `rA <- rB or C`
