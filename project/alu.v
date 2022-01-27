@@ -1,7 +1,7 @@
 module alu(
 	input [31:0] a,
 	input [31:0] b,
-	input [11:0] select, // {alu_add, alu_sub, alu_shr, alu_shl, alu_ror, alu_rol, alu_and, alu_or, alu_mul, alu_div, alu_neg, alu_not}
+	input [11:0] select, // {alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add}
 	output reg [31:0] z, // Outputs for all other instructions
 	output [31:0] hi, // Outputs for div, mul
 	output [31:0] lo
@@ -26,11 +26,11 @@ module alu(
 	// ALU Operations
 	
 	// Add / Subtract
-	wire add_sub_c_out; // Carry out ?
+	wire add_sub_c_out; // Carry out ? maybe set an overflow flag?
 	adder_subtractor add_sub ( .a(a), .b(b), .sum(z_add_sub), .sub(select[1]), .c_out(add_sub_c_out) );
 	
 	// Shift / Rotate
-	// todo: shift right
+	// todo: shift right (logical shift)
 	alu_shift_left shift_left ( .in(a), .shift(b), .out(z_shift_left) );
 	// todo: rotate right
 	// todo: rotate left
@@ -44,11 +44,10 @@ module alu(
 	// Division
 	// todo: divide (assign directly to hi, lo)
 	
-	signed_compliment #( .BITS(32) ) neg ( .in(b), .out(z_neg) ); // neg
-	assign z_not = ~b; // not
+	signed_compliment #( .BITS(32) ) neg ( .in(a), .out(z_neg) ); // neg
+	assign z_not = ~a; // not
 	
 	// Multiplex the outputs together
-	
 	always @(*) begin
 		case (select)
 			12'b000000000001 : z = z_add_sub;
@@ -59,7 +58,7 @@ module alu(
 			12'b000000100000 : z = z_rotate_left;
 			12'b000001000000 : z = z_and;
 			12'b000010000000 : z = z_or;
-			// No Multiply / Divide
+			// Multiply / Divide output to hi/lo
 			12'b010000000000 : z = z_neg;
 			12'b100000000000 : z = z_not;
 			default : z = 32'b0;
@@ -105,10 +104,10 @@ module alu_test;
 		#1 $display("Test | mul | 124 * 7 = (lo 868, hi 0) | %0d * %0d = (lo %0d, hi %0d)", a, b, lo, hi);
 
 		select <= 12'b010000000000; // Negate
-		#1 $display("Test | neg | -(7) = -7 | -(%0d) = %0d", b, sz);
+		#1 $display("Test | neg | -(124) = -124 | -(%0d) = %0d", a, sz);
 		
 		select <= 12'b100000000000; // Not
-		#1 $display("Test | not | ~00000007 = fffffff8 | ~%h = %h", b, z);
+		#1 $display("Test | not | ~0000007c = ffffff83 | ~%h = %h", a, z);
 		
 		$finish;
 	
