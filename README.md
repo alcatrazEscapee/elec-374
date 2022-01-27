@@ -8,15 +8,21 @@ Lorem Ipsum.
 
 Type | Fields
 ---|---
-R - Three Register         | `[5b - opcode][4b - RA][4b - RB][4b - RC][15b - Unused]`
-I - Two Register Immediate | `[5b - opcode][4b - RA][4b - RB][19b ------ Constant C]`
-B - Branch                 | `[5b - opcode][4b - RA][4b - C2][19b ------ Constant C]`
-J - Jump / IO              | `[5b - opcode][4b - RA][23b ------------------- Unused]`
+R - Three Register         | `[5b - opcode][4b - rA][4b - rB][4b - rC][15b - Unused]`
+I - Two Register Immediate | `[5b - opcode][4b - rA][4b - rB][19b ------ Constant C]`
+B - Branch                 | `[5b - opcode][4b - rA][4b - C2][19b ------ Constant C]`
+J - Jump / IO              | `[5b - opcode][4b - rA][23b ------------------- Unused]`
 M - Misc / Special         | `[5b - opcode][27b ---------------------------- Unused]`
 
 #### Instruction Table
 
-Note: the below instructions are instructions as interpreted by the hardware. The assembler may implement pseudoinstructions (such as `mov rA, rB`) which are implemented as alises to existing instructions (such as `add rA, rB, r0`).
+Notes:
+
+- The below instructions are instructions as interpreted by the hardware. The assembler may implement pseudoinstructions (such as `mov rA, rB`) which are implemented as alises to existing instructions (such as `add rA, rB, r0`).
+- Some `R` type instructions use only a subset of the available registers, but unless otherwise noted:
+  - `rA` is the first register, and is the register used to write to the register file.
+  - `rB` is the left (`a`) input to the ALU
+  - `rC` is the right (`c`) input to the ALU
 
 Index | Opcode | Name | Assembly | RTN
 ---|---|---|---|---
@@ -34,8 +40,8 @@ Index | Opcode | Name | Assembly | RTN
 11 | `01011` | Add Immediate | `addi rA, rB, C` | `rA <- rB + C`
 12 | `01100` | And Immediate | `andi rA, rB, C` | `rA <- rB & C`
 13 | `01101` | Or Immediate | `ori rA, rB, C` | `rA <- rB or C`
-14 | `01110` | Multiply | `mul rA, rB` | `HI, LO <- rA * rB`
-15 | `01111` | Divide | `div rA, rB` | `HI, LO <- rA / rB`
+14 | `01110` | Multiply | `mul rB, rC` | `HI, LO <- rB * rC`
+15 | `01111` | Divide | `div rB, rC` | `HI, LO <- rB / rC`
 16 | `10000` | Negate | `neg rA, rB` | `rA <- -rB`
 17 | `10001` | Not | `not rA, rB` | `rA <- ~rB`
 18 | `10010` | Conditional Branch | `br<condition> rA, C` | `if condition(rA), PC <- PC - 4 + C`
@@ -64,17 +70,20 @@ Branch Instructions use the `C2` field to determine the type of condition:
 
 #### (Possible) Planned Instructions and Instruction Types
 
+Floating point support:
+
+- Floating point IEE-745, single precision standard.
+- There is a seperate register file of floating point registers.
+- Copies between the `RF` and `FF` units can be acomplished by either copy instructions, or cast instructions
+- Floating point operations apply directly to floating point opcodes.
+
 Type | Fields
 ---|---
 R - Floating Point | `[5b - opcode][4b - FA][4b - FB][4b - FC][15b - FPU Opcode]`
 
 Index | Opcode | Name | Assembly | RTN
 ---|---|---|---|---
-27 | `11011` | XOR | `xor rA, rB, rC` | `rA <- rB ^ rC`
-28 | `11100` | XNOR | `xnor rA, rB, rC` | `rA <- ~(rB ^ rC)`
-29 | `11101` | NOR | `nor rA, rB, rC` | `rA <- ~(rB or rC)`
-30 | `11110` | NAND | `nand rA, rB, rC` | `rA <- ~(rB & rC)`
-31 | `11111` | Floating Point | Various | Various
+27 | `11011` | Floating Point | Various | Various
 
 Floating point operations use the `FPU Opcode` to determine their actual operation:
 
@@ -90,7 +99,9 @@ Floating point operations use the `FPU Opcode` to determine their actual operati
 
 ### Instruction RTN
 
-Instruction Fetch:
+- Unless otherwise specified, `rX`, `rY`, `rZ` has the same meaning as `rA`, `rB`, and `rC` as above.
+
+#### Instruction Fetch (Common to all instructions):
 
 - T0 `PC <- PC + 4`, `MA <- PC`
 - T1 `MD <- Memory[MA]`
@@ -104,17 +115,17 @@ Two Register (`neg`, `not`): `op rX, rY`
 
 - T3 `rX <- rY <op> r0`
 
-Two Register Double (`mul`, `div`): `op rX, rY`
+Two Register Double (`mul`, `div`): `op rY, rZ`
 
-- T3 `HI, LO <- rY <op> rX`
+- T3 `HI, LO <- rY <op> rZ`
 
 Move Instructions (`mfhi`, `mflo`, `in`): `mov rX`
 
 - T3 `rX <- <target>`
 
-Output: `out rX`
+Output: `out rY`
 
-- T3 `<output> <- rX`
+- T3 `<output> <- rY`
 
 Two Register Immediate (`ldi`, `addi`, `andi`, `ori`): `op rX, rY, C`
 
