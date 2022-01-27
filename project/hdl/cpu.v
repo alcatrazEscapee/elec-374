@@ -46,3 +46,11 @@ module cpu(
 	);
 
 endmodule
+
+
+module cpu_test;
+
+	initial begin
+		$finish;
+	end
+endmodule
