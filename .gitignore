@@ -6,12 +6,10 @@
 
 !/docs/**/*.pdf
 
-!/project/**/*.v
+!/project/Makefile
+!/project/hdl/**/*.v
+!/project/test/setup.py
 !/project/cpu.qpf
 !/project/cpu.qsf
-
-# Testing
-!/project/test/**/*.py
-!/project/test/**/*.do
 
 __pycache__

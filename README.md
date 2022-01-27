@@ -157,49 +157,24 @@ Jump And Link (Call): `jal rX`
 
 ### Testing
 
-Simple automated tests ran through python, invoking Altera ModelSim via command line.
+Testing is built on compiling the Verilog via command line, using the Altera ModelSim libraries. ModelSim is then invoked via command line to produce text output. A python script is used to verify the output and produce test results.
+
+Requirements:
 
 - `vsim` must be on your PATH (Default: `C:\altera\13.0sp1\modelsim_ase\win32aloem`)
+- `make` and `python`
 
 Setup:
 
-- In a source file (`foo.v`) with the top level module (`module foo`), declare a test module `module foo_test`
+- In each source file with a module `module foo`, create a `module foo_test` to run tests.
 - In the test module, use a `$display("Test | <test name> | <expected value> | <actual value>");` to indicate the presence of expected/actual values.
-- Generate the test files `test/foo.do` and `test/foo.py`
-  - Automatically: `python test/setup.py generate foo`
+- Finish the test with a `$finish;` statement.
 
 Running:
 
-- Run `python -m unittest discover test -p '*.py'`
+- Running all tests: `make all`
+- Running a specific test (the `foo` module): `make mod=foo`
 
-Example output:
-
-```
-$ python -m unittest discover test -p '*.py'
-Running vsim < test/alu_shift_left.do
-Reading C:/altera/13.0sp1/modelsim_ase/tcl/vsim/pref.tcl
-
-vlog +acc "alu_shift_left.v"
-# Model Technology ModelSim ALTERA vlog 10.1d Compiler 2012.11 Nov  2 2012
-# -- Compiling module alu_shift_left
-# -- Compiling module alu_shift_left_test
-#
-# Top level modules:
-#       alu_shift_left_test
-vsim -voptargs=+acc work.alu_shift_left_test
-# vsim -voptargs=+acc work.alu_shift_left_test
-# Loading work.alu_shift_left_test
-# Loading work.alu_shift_left
-run 100ns
-#
-# <EOF>
-
-....
-----------------------------------------------------------------------
-Ran 4 tests in 0.000s
-
-OK
-```
 
 #### Resources
 
