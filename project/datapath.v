@@ -43,7 +43,7 @@ module datapath(
 	wire [31:0] pc_plus_4;
 	wire pc_cout;
 	
-	ripple_carry_adder _pc_adder ( .a(pc_out), .b(32'b100), .sum(pc_plus_4), .c_in(0), .c_out(pc_cout) ); // PC + 4
+	ripple_carry_adder _pc_adder ( .a(pc_out), .b(32'b100), .sum(pc_plus_4), .c_in(1'b0), .c_out(pc_cout) ); // PC + 4
 	
 	assign pc_en = pc_increment | pc_in_alu | pc_in_rf_a;
 	
@@ -110,7 +110,7 @@ module datapath(
 			4'b0001 : rf_in <= md_out;
 			4'b0010 : rf_in <= lo_out;
 			4'b0100 : rf_in <= hi_out;
-			4'b1000 : rf_in <= rf_in_alu;
+			4'b1000 : rf_in <= alu_z_out;
 			default : rf_in <= 32'b0;
 		endcase
 	end
