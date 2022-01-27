@@ -18,7 +18,7 @@ def vsim(cls):
         if output.startswith('# Test'):
             _, name, expected, actual = map(lambda x: ' '.join(x.split()), output.split('|'))
             test = mock(expected, actual, '%s : Expected %s : Actual %s' % (name, expected, actual))
-            test.__name__ = 'test_%d_%s' %(i, name)
+            test.__name__ = 'test %d: %s' %(i, name)
             setattr (cls, test.__name__, test)
             i += 1
         else:
@@ -50,8 +50,7 @@ def main():
     else:
         print('Usage: setup.py generate <module>')
 
-TEST_DO_TEMPLATE = """vlib work
-vlog +acc "{module}.v"
+TEST_DO_TEMPLATE = """vlog +acc "{module}.v"
 vsim -voptargs=+acc work.{module}_test
 run 1000ns
 """

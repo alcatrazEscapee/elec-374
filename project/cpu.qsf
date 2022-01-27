@@ -74,7 +74,6 @@ set_global_assignment -name VERILOG_FILE booth_bit_pair_multiplier.v
 set_global_assignment -name VERILOG_FILE alu_shift_left.v
 set_global_assignment -name VERILOG_FILE alu.v
 set_global_assignment -name VERILOG_FILE adder_subtractor.v
-set_global_assignment -name VERILOG_FILE phase1/datapath_add_test.v
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
