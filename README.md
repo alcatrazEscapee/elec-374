@@ -131,7 +131,7 @@ Store: `st rX, C(rY)`
 - T3 `MA <- rY + C`
 - T4 `Memory[MA] <- MD`
 
-Conditional Branch: `br<condition> rX, C
+Conditional Branch: `br<condition> rX, C`
 
 - T3 `if condition(rX) PC <- PC - 4 + C`
 

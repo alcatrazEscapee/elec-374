@@ -1,7 +1,7 @@
 module register_file (
 	input [31:0] write_data,
-	input [15:0] write_select, // 1-hot encoded, as it will be mapped to control signals
-	input [3:0] read_addr_a, // bit encoded, as it will be read directly from a field in the instructions
+	input [3:0] write_addr,
+	input [3:0] read_addr_a,
 	input [3:0] read_addr_b,
 	output [31:0] data_a,
 	output [31:0] data_b,
@@ -19,7 +19,7 @@ module register_file (
 	generate
 		// Ignore r0, as it has a no-op (zero) connection
 		for (i = 1; i < 16; i = i + 1) begin : gen_r
-			register ri ( .q(write_data), .d(data[i]), .clk(clk), .clr(clr), .en(write_select[i]) );
+			register ri ( .q(write_data), .d(data[i]), .clk(clk), .clr(clr), .en(write_addr == i) );
 		end
 	endgenerate
 	
@@ -33,12 +33,11 @@ endmodule
 module register_file_test;
 
 	reg [31:0] z;
-	reg [15:0] sel_z;
-	reg [3:0] addr_a, addr_b;
+	reg [3:0] addr_z, addr_a, addr_b;
 	wire [31:0] a, b;
 	reg clk, clr;
 	
-	register_file rf ( .write_data(z), .write_select(sel_z), .read_addr_a(addr_a), .read_addr_b(addr_b), .data_a(a), .data_b(b), .clk(clk), .clr(clr) );
+	register_file rf ( .write_data(z), .write_addr(addr_z), .read_addr_a(addr_a), .read_addr_b(addr_b), .data_a(a), .data_b(b), .clk(clk), .clr(clr) );
 	
 	// Clock
 	initial begin
@@ -53,19 +52,19 @@ module register_file_test;
 		
 		// Write some data
 		z <= 853;
-		sel_z <= 16'b0000100000000000; // r11
+		addr_z <= 11;
 		#10;
 		z <= 124;
-		sel_z <= 16'b0000000000010000; // r4
+		addr_z <= 4;
 		#10;
 		z <= 888;
-		sel_z <= 16'b1000000000000000; // r15
+		addr_z <= 15;
 		#10;
 		z <= 999;
-		sel_z <= 16'b0000000000000001; // r0
+		addr_z <= 0;
 		#10;
 		
-		sel_z <= 16'b0;
+		addr_z <= 0;
 		
 		// Read data back again, checking both channels
 		addr_a <= 11;
