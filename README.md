@@ -27,20 +27,20 @@ Index | Opcode | Name | Assembly | RTN
 4 | `00100` | Subtract | `sub rA, rB, rC` | `rA <- rB - rC`
 5 | `00101` | Shift Right | `shr rA, rB, rC` | `rA <- rB >> rC`
 6 | `00110` | Shift Left | `shl rA, rB, rC` | `rA <- rB << rC`
-7 | `00111` | Rotate Right | `ror rA, rB, rC` | `rA <- (rB >> rC) | (rB << (32 - rB))`
-8 | `01000` | Rotate Left | `rol rA, rB, rC` | `rA <- (rB << rC) | (rB >> (32 - rB))`
+7 | `00111` | Rotate Right | `ror rA, rB, rC` | `rA <- (rB >> rC) or (rB << (32 - rB))`
+8 | `01000` | Rotate Left | `rol rA, rB, rC` | `rA <- (rB << rC) or (rB >> (32 - rB))`
 9 | `01001` | And | `and rA, rB, rC` | `rA <- rB & rC`
 10 | `01010` | Or | `or rA, rB, rC` | `rA <- rB | rC`
 11 | `01011` | Add Immediate | `addi rA, rB, C` | `rA <- rB + C`
 12 | `01100` | And Immediate | `andi rA, rB, C` | `rA <- rB & C`
-13 | `01101` | Or Immediate | `ori rA, rB, C` | `rA <- rB | C`
+13 | `01101` | Or Immediate | `ori rA, rB, C` | `rA <- rB or C`
 14 | `01110` | Multiply | `mul rA, rB` | `HI, LO <- rA * rB`
 15 | `01111` | Divide | `div rA, rB` | `HI, LO <- rA / rB`
 16 | `10000` | Negate | `neg rA, rB` | `rA <- -rB`
 17 | `10001` | Not | `not rA, rB` | `rA <- ~rB`
-18 | `10010` | Conditional Branch | `br<condition> rA, C` | `if condition(rA), PC <- PC + 1 + C`
+18 | `10010` | Conditional Branch | `br<condition> rA, C` | `if condition(rA), PC <- PC - 4 + C`
 19 | `10011` | Jump (Return) | `jr` | `PC <- r15`
-20 | `10100` | Jump and Link (Call) | `jal rA` | `r15 <- PC + 1, PC <- rA`
+20 | `10100` | Jump and Link (Call) | `jal rA` | `r15 <- PC - 4, PC <- rA`
 21 | `10101` | Input | `in rA` | `rA <- Input`
 22 | `10110` | Output | `out rA` | `Output <- rA`
 23 | `10111` | Move from HI | `mfhi rA` | `rA <- HI`
@@ -72,7 +72,7 @@ Index | Opcode | Name | Assembly | RTN
 ---|---|---|---|---
 27 | `11011` | XOR | `xor rA, rB, rC` | `rA <- rB ^ rC`
 28 | `11100` | XNOR | `xnor rA, rB, rC` | `rA <- ~(rB ^ rC)`
-29 | `11101` | NOR | `nor rA, rB, rC` | `rA <- ~(rB | rC)`
+29 | `11101` | NOR | `nor rA, rB, rC` | `rA <- ~(rB or rC)`
 30 | `11110` | NAND | `nand rA, rB, rC` | `rA <- ~(rB & rC)`
 31 | `11111` | Floating Point | Various | Various
 
@@ -87,6 +87,61 @@ Floating point operations use the `FPU Opcode` to determine their actual operati
 `100` | Float Add | `fadd fA, fB, fC` | `fA <- fB + fC`
 `101` | Float Subtract | `fsub fA, fB, fC` | `fA <- fB - fC`
 `110` | Float Multiply | `fmul fA, fB, fC` | `fA <- fB * fC`
+
+### Instruction RTN
+
+Instruction Fetch:
+
+- T0 `PC <- PC + 4`, `MA <- PC`
+- T1 `MD <- Memory[MA]`
+- T2 `IR <- MD`
+
+Three Register (`add`, `sub`, `shr`, `shl`, `ror`, `rol`, `and`, `or`): `op rX, rY, rZ`
+
+- T3 `rX <- rY <op> rZ`
+
+Two Register (`neg`, `not`): `op rX, rY`
+
+- T3 `rX <- rY <op> r0`
+
+Two Register Double (`mul`, `div`): `op rX, rY`
+
+- T3 `HI, LO <- rY <op> rX`
+
+Move Instructions (`mfhi`, `mflo`, `in`): `mov rX`
+
+- T3 `rX <- <target>`
+
+Output: `out rX`
+
+- T3 `<output> <- rX`
+
+Two Register Immediate (`ldi`, `addi`, `andi`, `ori`): `op rX, rY, C`
+
+- T3 `rX <- rY <op> C`
+
+Load: `ld rX, C(rY)`
+
+- T3 `MA <- rY + C`
+- T4 `MD <- Memory[MA]`
+- T5 `rX <- MD`
+
+Store: `st rX, C(rY)`
+
+- T3 `MA <- rY + C`
+- T4 `Memory[MA] <- MD`
+
+Conditional Branch: `br<condition> rX, C
+
+- T3 `if condition(rX) PC <- PC - 4 + C`
+
+Jump (Return): `jr`
+
+- T3 `PC <- r15`
+
+Jump And Link (Call): `jal rX`
+
+- T3 `r15 <- PC + 4`, `PC <- rX`
 
 
 ### Testing
