@@ -50,7 +50,8 @@ def main():
     else:
         print('Usage: setup.py generate <module>')
 
-TEST_DO_TEMPLATE = """vlog +acc "{module}.v"
+TEST_DO_TEMPLATE = """vlib work
+vlog +acc "{module}.v"
 vsim -voptargs=+acc work.{module}_test
 run 1000ns
 """
