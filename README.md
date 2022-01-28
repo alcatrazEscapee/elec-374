@@ -66,7 +66,7 @@ Branch Instructions use the `C2` field to determine the type of condition:
 `00` | Branch if zero | `rA == 0`
 `01` | Branch if nonzero | `rA != 0`
 `10` | Branch if positive | `rA > 0`
-`01` | Branch if negative | `rA < 0 
+`01` | Branch if negative | `rA < 0`
 
 #### (Possible) Planned Instructions and Instruction Types
 
