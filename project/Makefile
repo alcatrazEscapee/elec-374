@@ -1,5 +1,6 @@
 
 SHELL = /bin/bash
+VPATH = hdl hdl/fpu
 
 OUT  := out
 HDL  := hdl
@@ -10,13 +11,17 @@ VLIB := vlib
 VLOG := vlog +acc
 VSIM := vsim -voptargs=+acc work.%s_test\nrun 10000ns
 
-SOURCES := $(shell find $(HDL) -name '\*.v')
-OUTPUTS := $(SOURCES:$(HDL)/%.v=$(WORK)/%/_primary.vhd)
-TESTS   := $(SOURCES:$(HDL)/%.v=%)
+SOURCES := $(shell find $(HDL) -name '\*.v' -printf '%f ')
+OUTPUTS := $(SOURCES:%.v=$(WORK)/%/_primary.vhd)
+TESTS   := $(SOURCES:%.v=%)
 
 VSIM_LOG := $(OUT)/vsim.log
 
 .DEFAULT_GOAL = run
+
+.PHONY: debug
+debug:
+	@echo $(OUTPUTS)
 
 .PHONY : help
 help :
@@ -44,7 +49,7 @@ run : $(OUTPUTS)
 		python test/setup.py $(VSIM_LOG); \
 	fi
 
-$(WORK)/%/_primary.vhd : $(WORK) %.v
+$(OUTPUTS) : $(WORK)/%/_primary.vhd : %.v
 	$(VLOG) "$<"
 
 $(WORK) :
