@@ -4,12 +4,13 @@ VPATH = hdl hdl/fpu
 
 OUT  := out
 HDL  := hdl
-CLIB := clib
+SRC  := src
 WORK := work
 
 VLIB := vlib
 VLOG := vlog +acc
 VSIM := vsim -voptargs=+acc work.%s_test\nrun 10000ns
+GCC := gcc -std=c11
 
 SOURCES := $(shell find $(HDL) -name '\*.v' -printf '%f ')
 OUTPUTS := $(SOURCES:%.v=$(WORK)/%/_primary.vhd)
@@ -48,6 +49,11 @@ run : $(OUTPUTS)
 		printf "$(VSIM)" $(mod) | vsim > $(VSIM_LOG); \
 		python test/setup.py $(VSIM_LOG); \
 	fi
+
+.PHONY : fpu
+fpu : $(SRC)/fpu.c
+	mkdir -p $(OUT)
+	$(GCC) $< -o $(OUT)/fpu.o
 
 $(OUTPUTS) : $(WORK)/%/_primary.vhd : %.v
 	$(VLOG) "$<"
