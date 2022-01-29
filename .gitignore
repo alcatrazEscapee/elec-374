@@ -7,9 +7,13 @@
 !/docs/**/*.pdf
 
 !/project/Makefile
+
 !/project/hdl/**/*.v
-!/project/test/setup.py
 !/project/cpu.qpf
 !/project/cpu.qsf
+
+!/project/test/setup.py
+
+!/project/src/fpu.c
 
 __pycache__
