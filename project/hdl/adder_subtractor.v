@@ -8,8 +8,8 @@ module adder_subtractor(
 	wire [31:0] b_in;
 	assign b_in = b ^ {32{sub}};
 
-	// Inner adder used by the adder/subtractor is a RCA
-	ripple_carry_adder #( .BITS(32) ) rca ( .a(a), .b(b_in), .sum(sum), .c_in(sub), .c_out(c_out) );
+	// Inner adder used by the adder/subtractor is a CLA (two level, with one RCA to connect the 16-bit adders together)
+	carry_lookahead_adder #( .BITS16(2) ) _cla ( .a(a), .b(b_in), .sum(sum), .c_in(sub), .c_out(c_out) );
 
 endmodule
 
