@@ -1,4 +1,4 @@
-module alu_shift_left (
+module left_shift_32b (
 	input [31:0] in,
 	input [31:0] shift,
 	output [31:0] out
@@ -22,7 +22,7 @@ endmodule
 
 // Testbench
 `timescale 1ns/100ps
-module alu_shift_left_test;
+module left_shift_32b_test;
 
 	// Declare inputs and outputs to the DUT (Device Under Test), here called the 'target' module
 	reg [31:0] in;
@@ -30,7 +30,7 @@ module alu_shift_left_test;
 	wire [31:0] out;
 
 	// Create the target module
-	alu_shift_left target ( .in(in), .shift(shift), .out(out) );
+	left_shift_32b target ( .in(in), .shift(shift), .out(out) );
 
 	integer i;
 	

@@ -30,8 +30,8 @@ module alu(
 	adder_subtractor add_sub ( .a(a), .b(b), .sum(z_add_sub), .sub(select[1]), .c_out(add_sub_c_out) );
 	
 	// Shift / Rotate
-	// todo: shift right (logical shift)
-	alu_shift_left shift_left ( .in(a), .shift(b), .out(z_shift_left) );
+	right_shift_32b _shr ( .in(a), .shift(b), .out(z_shift_right) );
+	left_shift_32b  _shl ( .in(a), .shift(b), .out(z_shift_left) );
 	// todo: rotate right
 	// todo: rotate left
 	
@@ -90,6 +90,9 @@ module alu_test;
 		
 		select <= 12'b000000000010; // Subtract
 		#1 $display("Test | sub | 124 - 7 = 117 | %0d - %0d = %0d", a, b, z);
+		
+		select <= 12'b000000000100; // Shift Right
+		#1 $display("Test | shift_right | 0000007c >> 00000007 = 00000000 | %h >> %h = %h", a, b, z);
 		
 		select <= 12'b000000001000; // Shift Left
 		#1 $display("Test | shift_left | 0000007c << 00000007 = 00003e00 | %h << %h = %h", a, b, z);
