@@ -1,6 +1,7 @@
 import sys
 import unittest
 import subprocess
+import collections
 
 class Lazy:
     value: str
@@ -23,7 +24,7 @@ def main():
     log = sys.argv[1]
     target = '???'
     i = 0
-    fpu_f_tests = []
+    fpu_tests = collections.defaultdict(list)
 
     with open(log, 'r', encoding='utf-8') as f:
         lines = f.read().split('\n')
@@ -34,10 +35,11 @@ def main():
             i = 0
         if output.startswith('# Test'):
             special, name, expected, actual = map(lambda x: ' '.join(x.split()), output.split('|'))
-            if special == '# Test fpu f':
+            if special == '# Test fpu f' or special == '# Test fpu g':
+                op = special[-1]
                 z1, z2 = Lazy(), Lazy()
-                fpu_f_tests.append((expected, z1))
-                fpu_f_tests.append((actual, z2))
+                fpu_tests[op].append((expected, z1))
+                fpu_tests[op].append((actual, z2))
                 test = mock_lazy(z1, z2, name)
             else:
                 test = mock(expected, actual, name)
@@ -46,14 +48,14 @@ def main():
             setattr (ModelSim, test.__name__, test)
             i += 1
     
-    if fpu_f_tests:
-        print('Verifying FPU Tests (f)')
-        proc = subprocess.Popen(('out\\fpu.o', 'f'), shell=True, encoding='utf-8', 
+    for op, tests in fpu_tests.items():
+        print('Verifying FPU Tests (%s)' % op)
+        proc = subprocess.Popen(('out\\fpu.o', op), shell=True, encoding='utf-8', 
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        out, err = proc.communicate('\n'.join([e[0] for e in fpu_f_tests]))
+        out, err = proc.communicate('\n'.join([e[0] for e in tests]))
         if err is not None:
             raise RuntimeError(err)
-        for line, e in zip(out.split('\n'), fpu_f_tests):
+        for line, e in zip(out.split('\n'), tests):
             e[1].value = line
 
 
