@@ -4,6 +4,8 @@
 !/.editorconfig
 !/README.md
 
+!/.github/**/*.yml
+
 !/docs/**/*.pdf
 
 !/project/Makefile
