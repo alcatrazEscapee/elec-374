@@ -5,10 +5,9 @@ module carry_lookahead_adder_16b(
 	input c_in,
 	output c_out
 );
-	wire g0, g1, g2, g3, p0, p1, p2, p3, c0, c1, c2, c3, c01, c02, c03;
+	wire g0, g1, g2, g3, p0, p1, p2, p3, c0, c1, c2, c01, c02, c03;
 		
 	// Carry Lookahead
-	assign c3 = g3 | (p3 & g2) | (p3 & p2 & g1) | (p3 & p2 & p1 & g0) | (p3 & p2 & p1 & p0 & c_in);
 	assign c2 = g2 | (p2 & g1) | (p2 & p1 & g0) | (p2 & p1 & p0 & c_in);
 	assign c1 = g1 | (p1 & g0) | (p1 & p0 & c_in);
 	assign c0 = g0 | (p0 & c_in);
