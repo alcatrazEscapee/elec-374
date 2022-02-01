@@ -1,5 +1,7 @@
 # CPU Design Project
 
+![Automated Build and Test](https://github.com/alcatrazEscapee/elec-374/actions/workflows/test.yml/badge.svg)
+
 Lorem Ipsum.
 
 ### Specification
@@ -181,3 +183,4 @@ Running:
 - [HDL Bits - Verilog Practice](https://hdlbits.01xz.net/wiki/Main_Page)
 - [Quartus II Testbench Tutorial](https://class.ece.uw.edu/271/peckol/doc/DE1-SoC-Board-Tutorials/ModelsimTutorials/QuartusII-Testbench-Tutorial.pdf)
   - [More Advanced Testbench Tutorial, in Verilog](http://www-classes.usc.edu/engr/ee-s/254/ee254l_lab_manual/Testbenches/handout_files/ee254_testbench.pdf)
+- [HDL Testing on Github Actions](https://purisa.me/blog/testing-hdl-on-github/)
