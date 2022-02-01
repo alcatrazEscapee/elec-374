@@ -30,7 +30,7 @@ help :
 	@echo "make mod=foo : Runs tests for the module 'foo'"
 
 .PHONY : all
-all : $(OUTPUTS)
+all : $(OUTPUTS) $(OUT)/fpu.o
 	@rm -rf $(VSIM_LOG)
 	@mkdir -p $(OUT)
 	-@for mod in $(TESTS) ; do \
@@ -40,7 +40,7 @@ all : $(OUTPUTS)
 	@python test/setup.py $(VSIM_LOG);
 	
 .PHONY : run
-run : $(OUTPUTS)
+run : $(OUTPUTS) $(OUT)/fpu.o
 	@mkdir -p $(OUT)
 	-@if [ "$(mod)" = "" ]; then \
 		echo "No module provided - try with make mod=foo" ; \
@@ -51,9 +51,11 @@ run : $(OUTPUTS)
 	fi
 
 .PHONY : fpu
-fpu : $(SRC)/fpu.c
+fpu : $(OUT)/fpu.o
+
+$(OUT)/%.o : $(SRC)/%.c
 	mkdir -p $(OUT)
-	$(GCC) $< -o $(OUT)/fpu.o
+	$(GCC) $< -o $@
 
 $(OUTPUTS) : $(WORK)/%/_primary.vhd : %.v
 	$(VLOG) "$<"

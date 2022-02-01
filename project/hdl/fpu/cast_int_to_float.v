@@ -76,9 +76,10 @@ module cast_int_to_float_test;
 		in <= 32'b0;
 		
 		is_signed <= 1'b0; #1 $display("Test fpu f | unsigned 0 | 00000000 | %h", out);
-		is_signed <= 1'b1; #1 $display("Test fpu f | signed 0 | 00000000 | %h", out);
+		is_signed <= 1'b1; #1 $display("Test fpu f | signed 0   | 00000000 | %h", out);
 		
-		in <= 32'hffffffff; #1 $display("Test fpu f | signed min | ffffffff | %h", out);
+		in <= 32'hffffffff; #1 $display("Test fpu f | signed -1  | ffffffff | %h", out);
+		in <= 32'h80000000; #1 $display("Test fpu f | signed min | 80000000 | %h", out);
 		in <= 32'h7fffffff; #1 $display("Test fpu f | signed max | 7fffffff | %h", out);
 		
 		// Generic + Random Tests
@@ -96,7 +97,7 @@ module cast_int_to_float_test;
 			in <= i; #1 $display("Test fpu g | unsigned %0d | %h | %h", i, i, out);
 		end
 		
-		for (i = 0; i < 1000; i = i + 1) begin
+		for (i = 0; i < 10; i = i + 1) begin
 			in <= $random; #1 $display("Test fpu g | unsigned %0d | %h | %h", in, in, out);
 		end
 		
