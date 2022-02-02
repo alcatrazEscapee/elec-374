@@ -395,7 +395,7 @@ module datapath_test;
 		// T3
 		ir_en <= 1'b0;
 		rf_z_addr <= 4'b0101; rf_a_addr <= 4'b0010; rf_b_addr <= 4'b0100; alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_ror <= 1'b1;
-		#10 // $display("Test | ror r5 r2 r4 @ T3 | a=53, b=28, z=25, r5=0 | a=%0d, b=%0d, z=%0d, r5=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z, _dp._rf.data[5]);
+		#10 $display("Test | ror r5 r2 r4 @ T3 | a=53, b=28, z=848, r5=848 | a=%0d, b=%0d, z=%0d, r5=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z, _dp._rf.data[5]);
 		
 		// rol r5, r2, r4
 		
@@ -417,7 +417,7 @@ module datapath_test;
 		// T3
 		ir_en <= 1'b0;
 		rf_z_addr <= 4'b0101; rf_a_addr <= 4'b0010; rf_b_addr <= 4'b0100; alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_rol <= 1'b1;
-		#10 // $display("Test | rol r5 r2 r4 @ T3 | a=53, b=28, z=25, r5=1342177283 | a=%0d, b=%0d, z=%0d, r5=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z, _dp._rf.data[5]);
+		#10 $display("Test | rol r5 r2 r4 @ T3 | a=53, b=28, z=1342177283, r5=1342177283 | a=%0d, b=%0d, z=%0d, r5=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z, _dp._rf.data[5]);
 		
 		
 		// mul r2, r4

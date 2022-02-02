@@ -38,7 +38,7 @@ jobs:
           ${{ runner.os }}-modelsim-20.1
     - name: Install ModelSim if not cached
       if: steps.cache.outputs.cache-hit != 'true'
-      run: curl 'https://download.altera.com/akdlm/software/acdsinst/20.1std.1/720/ib_installers/ModelSimSetup-20.1.1.720-linux.run' -o ModelSimSetup.run && chmod +x ModelSimSetup.run && ./ModelSimSetup.run --mode unattended --installdir ~/intelFPGA --accept_eula 1 && sed -i 's/linux_rh60/linux/g' ~/intelFPGA/20.1/modelsim_ase/vco
+      run: curl 'https://download.altera.com/akdlm/software/acdsinst/20.1std.1/720/ib_installers/ModelSimSetup-20.1.1.720-linux.run' -o ModelSimSetup.run && chmod +x ModelSimSetup.run && ./ModelSimSetup.run --mode unattended --installdir ~/intelFPGA --accept_eula 1
     - name: Edit ModelSim vco
       run: sed -i 's/linux_rh60/linux/g' ~/intelFPGA/modelsim_ase/vco
     - name: Add ModelSim to PATH
