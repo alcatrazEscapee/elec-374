@@ -29,11 +29,21 @@ debug:
 
 .PHONY : help
 help :
-	@echo "make all     : Runs all tests"
-	@echo "make mod=foo : Runs tests for the module 'foo'"
+	@echo "make work        : Sets up the ModelSim work library"
+	@echo "make all         : Runs all tests"
+	@echo "make compile-all : A subset of 'make all', intended to be used by CI"
+	@echo "make mod=foo     : Runs tests for the module 'foo'"
+	@echo "make clean       : Cleans all build files"
 
 .PHONY : clean
-clean :
+clean : clean-backups clean-outputs
+
+.PHONY : clean-backups
+clean-backups :
+	find . -name '*.bak' -type f -delete
+
+.PHONY : clean-outputs
+clean-outputs :
 	rm -rf db
 	rm -rf incremental_db
 	rm -rf out
@@ -52,7 +62,7 @@ compile-all : $(OUTPUTS)
 
 .PHONY : all
 all : compile-all
-	@python test/setup.py $(VSIM_LOG);
+	@python test/setup.py $(VSIM_LOG)
 	
 .PHONY : run
 run : $(OUTPUTS)
