@@ -3,8 +3,8 @@ module alu(
 	input [31:0] b,
 	input [11:0] select, // {alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add}
 	output reg [31:0] z, // Outputs for all other instructions
-	output [31:0] hi, // Outputs for div, mul
-	output [31:0] lo
+	output reg [31:0] hi, // Outputs for div, mul
+	output reg [31:0] lo
 );
 	// ALU Operations (by select index)
 	// 0 = Add
@@ -21,6 +21,8 @@ module alu(
 	// B = Not
 	
 	wire [31:0] z_add_sub, z_shift_right, z_shift_left, z_and, z_or, z_not;
+	// pre-MUX outputs for mul/div
+	wire [31:0] hi_mul, lo_mul, hi_div, lo_div;
 		
 	// ALU Operations
 	
@@ -38,10 +40,10 @@ module alu(
 	assign z_or = a | b; // or
 	
 	// Multiplication
-	booth_bit_pair_multiplier mul ( .multiplicand(a), .multiplier(b), .product({hi, lo}) );
+	booth_bit_pair_multiplier mul ( .multiplicand(a), .multiplier(b), .product({hi_mul, lo_mul}) );
 	
 	// Division
-	// todo: divide (assign directly to hi, lo)
+	array_div #( .BITS(32) ) div ( .dividend(a), .divisor(b), .quotient(lo_div), .remainder(hi_div) );
 
 	assign z_not = ~a; // not
 	
@@ -60,6 +62,14 @@ module alu(
 			12'b010000000000 : z = z_add_sub;
 			12'b100000000000 : z = z_not;
 			default : z = 32'b0;
+		endcase
+	end
+	
+	always @(*) begin
+		case (select)
+			12'b000100000000 : {hi, lo} <= {hi_mul, lo_mul};
+			12'b001000000000 : {hi, lo} <= {hi_div, lo_div};
+			default : {hi, lo} <= 64'b0;
 		endcase
 	end
 	
@@ -109,6 +119,9 @@ module alu_test;
 		
 		select <= 12'b000100000000; // Multiply
 		#1 $display("Test | mul | 124 * 7 = (lo 868, hi 0) | %0d * %0d = (lo %0d, hi %0d)", a, b, lo, hi);
+		
+		select <= 12'b001000000000; // Divide
+		#1 $display("Test | div | 124 / 7 = (lo 17, hi 5) | %0d / %0d = (lo %0d, hi %0d)", a, b, lo, hi);
 
 		select <= 12'b010000000000; // Negate
 		#1 $display("Test | neg | -(124) = -124 | -(%0d) = %0d", a, sz);
