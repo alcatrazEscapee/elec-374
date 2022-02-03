@@ -5,18 +5,17 @@ module float_adder_subtractor (
 	input add_sub // add = 0 (a + b), sub = 1 (a - b)
 );
 	// IEEE-754 : [1b - Sign][8b - Exponent, Excess-127][23b - Mantissa]
-	
-	wire [31:0] f_sum; // Sum of fa + fb, assuming neither are inf or NaN
-	
+			
 	// Decompose
-	wire sa, sb, sb_pre, sz;
-	wire [7:0] ea, eb, ez;
-	wire [22:0] ma, mb, mz;
+	wire sa, sb, sb_pre;
+	wire [7:0] ea, eb;
+	wire [22:0] ma, mb;
 	
 	assign {sa, ea, ma} = fa;
 	assign {sb_pre, eb, mb} = fb; // Invert the sign of b if this is a subtraction
 	assign sb = add_sub ? ~sb_pre : sb_pre;
-	assign f_sum = {sz, ez, mz};
+	
+	reg [31:0] f_sum; // Sum of fa + fb, assuming neither are inf or NaN
 	
 	// Handle special cases of NaN, Infinity, and Zero
 	// NaN + Anything = NaN
@@ -80,68 +79,66 @@ module float_adder_subtractor (
 	ripple_carry_adder #( .BITS(8) ) _exp_sub ( .a(e_hi), .b(~e_lo), .sum(e_delta), .c_in(1'b1), .c_out(exp_c_out) );
 	
 	// Both mantissas are nonzero, and thus have an implicit leading '1'.
-	// We also need to do a 2's compliment signed addition/subtraction, meaning we need another bit to avoid overflow
-	wire [24:0] m_lo_long, m_hi_long;
+	wire [23:0] m_lo_long, m_hi_long;
 	
-	assign m_lo_long = {2'b01, m_lo};
-	assign m_hi_long = {2'b01, m_hi};
+	assign m_lo_long = {1'b1, m_lo};
+	assign m_hi_long = {1'b1, m_hi};
 	
 	// Normalize the lower mantissa by shifting right by the difference in exponents.
-	wire [24:0] m_lo_norm;
+	wire [23:0] m_lo_norm;
 	wire [31:0] m_lo_norm_32b;
 	
-	right_shift_32b _m_lz_shift ( .in({m_lo_long, 7'b0}), .shift({24'b0, e_delta}), .out(m_lo_norm_32b) );
-	assign m_lo_norm = m_lo_norm_32b[31:7]; // Truncate
+	right_shift_32b _m_lz_shift ( .in({m_lo_long, 8'b0}), .shift({24'b0, e_delta}), .out(m_lo_norm_32b) );
+	assign m_lo_norm = m_lo_norm_32b[31:8]; // Truncate unused bits
 	
-	// FOR NOW, just add two values
 	// todo : handle negative values (subtraction)
 	
+	// Sum both mantissas, to a 25-bit sum in XX.XXXX... format
 	wire [24:0] m_sum;
-	wire m_sum_c_out;
 	
 	assign m_sub = s_hi ^ s_lo;
-	ripple_carry_adder #( .BITS(25) ) _mantissa_add ( .a(m_hi_long), .b(m_sub ? ~m_lo_norm : m_lo_norm), .sum(m_sum), .c_in(m_sub), .c_out(m_sum_c_out) );
-			
-	// m_sum is now a positive 25-bit mantissa (in XX.XX... format) representing the result of the calculation.
-	
-	// We have to implicitly shift the 25-bit mantissa down by one (due to the carry from the sum), into X.XX... form.
-	// However, due to the sum any number of those digits may be zero, and we need to re-normalize.
-	// Assuming the mantissa is not all zero, we need to count the number of leading zeros, to know how many places to shift the exponent
-	// We need to shift 1 + leading zeros, taking into account the full 25-bit mantissa (due to the hidden leading 1.XXX)
-	// So, we pass a 32-bit constant with one left-padded '0' (+1) and padded right '1's
-	
+	ripple_carry_adder #( .BITS(24) ) _mantissa_add ( .a(m_hi_long), .b(m_lo_norm), .sum(m_sum[23:0]), .c_in(1'b0), .c_out(m_sum[24]) );
+		
+	// Count leading zeros (is_zero flag will be set if the sum is zero, indicating the number itself is zero)
 	wire is_zero;
 	wire [4:0] leading_zeros;
-	count_leading_zeros #( .BITS(5) ) _count_zeros ( .value({1'b0, m_sum, {6{1'b1}}}), .count(leading_zeros), .zero(is_zero) );
+	count_leading_zeros #( .BITS(5) ) _count_zeros ( .value({m_sum, 7'b0}), .count(leading_zeros), .zero(is_zero) );
 	
-	// Now we can re-normalize the exponent.
-	// The sum output was m_sum * 2^{e_hi}, with m_sum = XX.XXXX...
-	// We need to add +1 (because of the implicit left shift by 1 to get X.XXX...)
-	// And then -leading_zeros (because of each shift done by the leading zeros)
-	// Thus, e_sum := e_hi + 1 - leading_zeros
+	// Assuming the sum is not all zero, we can normalize the exponent, keeping in mind the sum has two digits before the decimal point
+	wire [7:0] leading_zeros_c, e_sum;
+	wire e_sum_carry; // Exponent overflow (infinity detection)
 	
-	wire [7:0] leading_zeros_sign_extend, leading_zeros_compliment;
-	wire [8:0] e_sum;
-	
-	assign leading_zeros_sign_extend = {{3{leading_zeros[4]}}, leading_zeros};
-	signed_compliment #( .BITS(8) ) _lz_comp ( .in(leading_zeros_sign_extend), .out(leading_zeros_compliment) );
-	ripple_carry_adder #( .BITS(8) ) _lz_add ( .a(e_hi), .b(leading_zeros_compliment), .sum(e_sum[7:0]), .c_in(1'b1), .c_out(e_sum[8]) );
+	// e_sum = e_hi + 1 - leading_zeros
+	// Take the signed compliment of leading_zeros, and then add it +1 with the carry in
+	signed_compliment #( .BITS(8) ) _lz_comp ( .in({{3{leading_zeros[4]}}, leading_zeros}), .out(leading_zeros_c) );
+	ripple_carry_adder #( .BITS(8) ) _lz_add ( .a(e_hi), .b(leading_zeros_c), .sum(e_sum), .c_in(1'b1), .c_out(e_sum_carry) );
 	
 	// Detect overflow + underflow via the top bit of the sum
 	// todo: overflow and inf/-inf as required
 	
-	// Shift the mantissa by the required amount
-	// todo: right shift
-	wire [23:0] m_shifted;
+	// Shift the mantissa by 1 + leading zeros.
+	// Done by dropping the top bit of the mantissa sum, and shifting by leading zeros (which shifts away the leading '1')
+	wire [22:0] m_rounded;
 	wire [31:0] m_shifted_32b;
 	
-	right_shift_32b _normalize_m ( .in({7'b0, m_sum_norm}), .shift({{27{1'b0}}, leading_zeros}), .out(m_shifted_32b) );
-	assign m_shifted = m_shifted_32b[22:0]; // Truncate
+	left_shift_32b _normalize_m ( .in({m_sum[23:0], 8'b0}), .shift({{27{1'b0}}, leading_zeros}), .out(m_shifted_32b) );
+	
+	wire round_overflow;
+	
+	round_to_nearest_even #( .BITS_IN(32), .BITS_OUT(23) ) _m_round ( .in(m_shifted_32b), .out(m_rounded), .overflow(round_overflow) );
 	
 	// Assign to the result fields, using the is_zero flag
-	assign sz = m_sum_negative;
-	assign ez = e_sum[7:0];
-	assign mz = m_shifted;
+	// todo: handle zero results
+	// todo: handle negative (infinity) overflow
+	// todo: handle too-close-to-zero overflow
+	
+	always @(*) begin
+		if (e_sum_carry || round_overflow || (& e_sum)) // Positive overflow (+inf)
+			f_sum = 32'h7f800000;
+		else
+			// todo: handle output sign
+			f_sum = {1'b0, e_sum, m_rounded};
+	end
 	
 endmodule
 
@@ -249,22 +246,21 @@ module float_adder_subtractor_test;
 		
 		add_sub <= 1'b0;
 		
-		// Cases where delta_exp = 0
 		decomposed_in <= 1'b1;
 		sa <= 1'b0; ea <= 8'b0; ma <= 23'b0;
 		sb <= 1'b0; eb <= 8'b0; mb <= 32'b0;
 		
-		for (i = 0; i < 10; i = i + 1) begin
-			exponent = $urandom;
+		for (i = 0; i < 1000; i = i + 1) begin
+			exponent = 1 + ($urandom % 254); // [1, 254]
 			sa <= 1'b0;
 			sb <= 1'b0;
 			ea <= exponent;
 			eb <= exponent;
 			ma <= $urandom;
 			mb <= $urandom;
-			#1 $display("Test fpu + | float + (equal exponent) | %h | %h | %h", a_in, b_in, sum);
+			#1 $display("Test fpu + | float + (equal exponent, positive + positive) | %h | %h | %h", a_in, b_in, sum);
 		end
 		
-		//$finish;
+		$finish;
 	end
 endmodule

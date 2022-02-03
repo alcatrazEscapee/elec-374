@@ -23,34 +23,22 @@ module cast_int_to_float(
 	// Left shift the leading zeros away
 	wire [31:0] shift_out;
 	wire [22:0] mantissa;
-	wire round_up;
+	wire round_overflow; // If the rounding overflowed into the leading bits, and the exponent needs to be bumped as a result.
 	
 	left_shift_32b _ls_mantissa ( .in(in_positive), .shift({27'b0, leading_zeros}), .out(shift_out) );
-	assign mantissa = shift_out[30:8]; // Top 23 bits of the shifted result, excluding the topmost bit (implicit 1.xxx)
 	
-	// Rounding is complicated
-	// IEEE-754 rounds to nearest, but also rounds ties to even
-	// A tie occurs when the lower bits of shift_out are exactly 1000...0
-	// Rounding then needs to happen only if the lowest bit of the mantissa is 1 (aka, the truncated integer is odd)
-	assign round_up = shift_out[7] & (
-		(| shift_out[6:0]) | // Any lower bits are non-zero (this would break the tie)
-		mantissa[0]); // Or the lowest bit of the mantissa is 1
-
-	wire [22:0] mantissa_plus_one, rounded_mantissa;
-	wire round_exponent_up;
-	
-	ripple_carry_adder #( .BITS(23) ) _rca_mround ( .a(mantissa), .b(23'b0), .sum(mantissa_plus_one), .c_in(1'b1), .c_out(round_exponent_up) );
-	assign rounded_mantissa = round_up ? mantissa_plus_one : mantissa;
+	// Exclude the top bit (implicit 1.xxx), and round to the nearest even
+	round_to_nearest_even #( .BITS_IN(31), .BITS_OUT(23) ) _m_round ( .in(shift_out[30:0]), .out(mantissa), .overflow(round_overflow) );
 	
 	// The exponent is 31 - leading_zeros, stored in Excess-127, which means we need to compute 158 - leading_zeros
 	// Note: -leading_zeros = (~leading_zeros + 1) -> 158 - leading_zeros = 159 + ~leading_zeros	
 	// Include the carry in as +1, if the rounded mantissa resulted in a higher exponent (we don't need to shift the mantissa in this case, as it will only happen if the mantissa is now all zero)
 	wire [7:0] exponent;
 	wire exp_c_out;
-	ripple_carry_adder #( .BITS(8) ) _rca_exp ( .a({8'b10011111}), .b({3'b111, ~leading_zeros}), .sum(exponent), .c_in(round_exponent_up), .c_out(exp_c_out) ); 
+	ripple_carry_adder #( .BITS(8) ) _rca_exp ( .a({8'b10011111}), .b({3'b111, ~leading_zeros}), .sum(exponent), .c_in(round_overflow), .c_out(exp_c_out) ); 
 	
 	// Special case if all_zero, just output the positive zero constant, otherwise output the calculated value
-	assign out = is_zero ? 32'b0 : {is_negative, exponent, rounded_mantissa};
+	assign out = is_zero ? 32'b0 : {is_negative, exponent, mantissa};
 
 endmodule
 
