@@ -6,41 +6,69 @@ OUT  := out
 HDL  := hdl
 SRC  := src
 WORK := work
+TEST := test
+SIMULATION := simulation/modelsim
 
 VLIB := vlib
 VLOG := vlog +acc
 VSIM := vsim -voptargs=+acc work.%s_test\nrun 10000ns
 GCC := gcc -std=c11
 
-SOURCES := $(shell find $(HDL) -name '\*.v' -printf '%f ')
-OUTPUTS := $(SOURCES:%.v=$(WORK)/%/_primary.vhd)
-TESTS   := $(SOURCES:%.v=%)
+SOURCES  := $(shell find $(HDL) -name '*.v' -printf '%f ')
+MEMORY   := $(shell find $(TEST) -name '*.mem')
+
+OUTPUTS  := $(SOURCES:%.v=$(WORK)/%/_primary.vhd)
+TESTS    := $(SOURCES:%.v=%)
+MEMORY_OUTPUTS := $(MEMORY:%.mem=$(SIMULATION)/%.mem)
 
 VSIM_LOG := $(OUT)/vsim.log
 
 .DEFAULT_GOAL = run
 
-.PHONY: debug
-debug:
-	@echo $(OUTPUTS)
-
 .PHONY : help
 help :
-	@echo "make all     : Runs all tests"
-	@echo "make mod=foo : Runs tests for the module 'foo'"
+	@echo "make modelsim    : Sets up requirements for ModelSim"
+	@echo "make all         : Runs all tests"
+	@echo "make compile-all : A subset of 'make all', intended to be used by CI"
+	@echo "make mod=foo     : Runs tests for the module 'foo'"
+	@echo "make clean       : Cleans all build files"
 
-.PHONY : all
-all : $(OUTPUTS) $(OUT)/fpu.o
-	@rm -rf $(VSIM_LOG)
+.PHONY : modelsim
+modelsim : $(WORK) $(SIMULATION)/$(TEST) $(MEMORY_OUTPUTS)
+
+.PHONY : clean
+clean : clean-backups clean-outputs
+
+.PHONY : clean-backups
+clean-backups :
+	find . -name '*.bak' -type f -delete
+
+.PHONY : clean-outputs
+clean-outputs :
+	rm -rf db
+	rm -rf incremental_db
+	rm -rf out
+	rm -rf output_files
+	rm -rf simulation
+	rm -rf work
+	rm -f cpu_nativelink_simulation.rpt
+	rm -f transcript
+
+.PHONY : compile-all
+compile-all : $(WORK) $(OUTPUTS) $(OUT)/fpu.o
 	@mkdir -p $(OUT)
+	@echo start > $(VSIM_LOG)
 	-@for mod in $(TESTS) ; do \
 		printf "Simulating %s...\n" $$mod ; \
 		printf "$(VSIM)" $$mod | vsim >> $(VSIM_LOG) ; \
 	done
-	@python test/setup.py $(VSIM_LOG);
+
+.PHONY : all
+all : compile-all
+	@python test/setup.py $(VSIM_LOG)
 	
 .PHONY : run
-run : $(OUTPUTS) $(OUT)/fpu.o
+run : $(WORK) $(OUTPUTS) $(OUT)/fpu.o
 	@mkdir -p $(OUT)
 	-@if [ "$(mod)" = "" ]; then \
 		echo "No module provided - try with make mod=foo" ; \
@@ -50,15 +78,18 @@ run : $(OUTPUTS) $(OUT)/fpu.o
 		python test/setup.py $(VSIM_LOG); \
 	fi
 
-.PHONY : fpu
-fpu : $(OUT)/fpu.o
-
 $(OUT)/%.o : $(SRC)/%.c
 	mkdir -p $(OUT)
 	$(GCC) $< -o $@
 
+$(WORK) :
+	$(VLIB) $(WORK)
+
 $(OUTPUTS) : $(WORK)/%/_primary.vhd : %.v
 	$(VLOG) "$<"
 
-$(WORK) :
-	$(VLIB) $(WORK)
+$(SIMULATION)/$(TEST) :
+	mkdir -p $(SIMULATION)/$(TEST)
+
+$(SIMULATION)/%.mem : %.mem
+	cp $< $@

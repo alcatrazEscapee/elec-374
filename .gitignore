@@ -4,6 +4,8 @@
 !/.editorconfig
 !/README.md
 
+!/.github/**/*.yml
+
 !/docs/**/*.pdf
 
 !/project/Makefile
@@ -13,6 +15,7 @@
 !/project/cpu.qsf
 
 !/project/test/setup.py
+!/project/test/*.mem
 
 !/project/src/fpu.c
 

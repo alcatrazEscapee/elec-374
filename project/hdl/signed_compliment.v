@@ -34,6 +34,7 @@ module signed_compliment_test;
 			in <= i;
 			#1 $display("Test | compliment -%0d | %0d | %0d", in, out, -in);
 		end
-	end
-
+		
+		$finish;
+	end	
 endmodule

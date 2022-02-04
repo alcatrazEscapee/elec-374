@@ -38,37 +38,64 @@ module booth_bit_pair_multiplier(
 	partial_product _pp14 ( booth_ones[29:28], booth_signs[29:28], multiplicand, pp14 );
 	partial_product _pp15 ( booth_ones[31:30], booth_signs[31:30], multiplicand, pp15 );
 	
-	// Sums of partial products
-	// Build a balanced binary tree of adders
-	// The first level adders need to both sign extend (left), and zero-pad (right) their inputs
-	// in order to match their level within the multiplication
+	// Wallace Tree (Carry-Save Adders + 1 Hiearchical Carry Lookahead Adder)
+	// Input partial products are all either (left) sign extended or (right) zero padded to be 64-bit summands.
+	// Quartus should be clever enough to eliminate the dead logic this creates (and in testing, it does, within statistically insignifigant LE counts)
 	
-	wire [63:0] sum00, sum01, sum02, sum03, sum04, sum05, sum06, sum07;
-	wire [15:0] c_out; // All upper carry bits ignored, but we cannot just connect them to 0 like we can with c_in
+	// Level 0
+	wire [63:0] sum00, sum01, sum02, sum03, sum04, carry00, carry01, carry02, carry03, carry04, pass01;
 	
-	ripple_carry_adder #( .BITS(64) ) _a00 ( .a({{31{pp0[32]}},  pp0        }), .b({{29{pp1[32]}}, pp1,  2'b0}),  .sum(sum00), .c_in(1'b0), .c_out(c_out[0]) );
-	ripple_carry_adder #( .BITS(64) ) _a01 ( .a({{27{pp2[32]}},  pp2,  4'b0 }), .b({{25{pp3[32]}}, pp3,  6'b0}),  .sum(sum01), .c_in(1'b0), .c_out(c_out[1]) );
-	ripple_carry_adder #( .BITS(64) ) _a02 ( .a({{23{pp4[32]}},  pp4,  8'b0 }), .b({{21{pp5[32]}}, pp5,  10'b0}), .sum(sum02), .c_in(1'b0), .c_out(c_out[2]) );
-	ripple_carry_adder #( .BITS(64) ) _a03 ( .a({{19{pp6[32]}},  pp6,  12'b0}), .b({{17{pp7[32]}}, pp7,  14'b0}), .sum(sum03), .c_in(1'b0), .c_out(c_out[3]) );
-	ripple_carry_adder #( .BITS(64) ) _a04 ( .a({{15{pp8[32]}},  pp8,  16'b0}), .b({{13{pp9[32]}}, pp9,  18'b0}), .sum(sum04), .c_in(1'b0), .c_out(c_out[4]) );
-	ripple_carry_adder #( .BITS(64) ) _a05 ( .a({{11{pp10[32]}}, pp10, 20'b0}), .b({{9{pp11[32]}}, pp11, 22'b0}), .sum(sum05), .c_in(1'b0), .c_out(c_out[5]) );
-	ripple_carry_adder #( .BITS(64) ) _a06 ( .a({{7{pp12[32]}},  pp12, 24'b0}), .b({{5{pp13[32]}}, pp13, 26'b0}), .sum(sum06), .c_in(1'b0), .c_out(c_out[6]) );
-	ripple_carry_adder #( .BITS(64) ) _a07 ( .a({{3{pp14[32]}},  pp14, 28'b0}), .b({{1{pp15[32]}}, pp15, 30'b0}), .sum(sum07), .c_in(1'b0), .c_out(c_out[7]) );
+	carry_save_adder #( .BITS(64) ) _csa00 ( .a({{31{pp0[32]}}, pp0        }), .b({{29{pp1[32]}},  pp1,  2'b0 }), .c({{27{pp2[32]}}, pp2,  4'b0 }), .sum(sum00), .carry(carry00) );
+	carry_save_adder #( .BITS(64) ) _csa01 ( .a({{25{pp3[32]}}, pp3,  6'b0 }), .b({{23{pp4[32]}},  pp4,  8'b0 }), .c({{21{pp5[32]}}, pp5,  10'b0}), .sum(sum01), .carry(carry01) );
+	carry_save_adder #( .BITS(64) ) _csa02 ( .a({{19{pp6[32]}}, pp6,  12'b0}), .b({{17{pp7[32]}},  pp7,  14'b0}), .c({{15{pp8[32]}}, pp8,  16'b0}), .sum(sum02), .carry(carry02) );
+	carry_save_adder #( .BITS(64) ) _csa03 ( .a({{13{pp9[32]}}, pp9,  18'b0}), .b({{11{pp10[32]}}, pp10, 20'b0}), .c({{9{pp11[32]}}, pp11, 22'b0}), .sum(sum03), .carry(carry03) );
+	carry_save_adder #( .BITS(64) ) _csa04 ( .a({{7{pp12[32]}}, pp12, 24'b0}), .b({{5{pp13[32]}},  pp13, 26'b0}), .c({{3{pp14[32]}}, pp14, 28'b0}), .sum(sum04), .carry(carry04) );
 	
-	wire [63:0] sum10, sum11, sum12, sum13;
+	assign pass01 = {{1{pp15[32]}}, pp15, 30'b0};
 	
-	ripple_carry_adder #( .BITS(64) ) _a10 ( .a(sum00), .b(sum01), .sum(sum10), .c_in(1'b0), .c_out(c_out[8]) );
-	ripple_carry_adder #( .BITS(64) ) _a11 ( .a(sum02), .b(sum03), .sum(sum11), .c_in(1'b0), .c_out(c_out[9]) );
-	ripple_carry_adder #( .BITS(64) ) _a12 ( .a(sum04), .b(sum05), .sum(sum12), .c_in(1'b0), .c_out(c_out[10]) );
-	ripple_carry_adder #( .BITS(64) ) _a13 ( .a(sum06), .b(sum07), .sum(sum13), .c_in(1'b0), .c_out(c_out[11]) );
+	// Level 1
+	wire [63:0] sum10, sum11, sum12, carry10, carry11, carry12, pass10, pass11;
+		
+	carry_save_adder #( .BITS(64) ) _csa10 ( .a(sum00), .b({carry00[62:0], 1'b0}), .c(sum01), .sum(sum10), .carry(carry10) );
+	carry_save_adder #( .BITS(64) ) _csa11 ( .a({carry01[62:0], 1'b0}), .b(sum02), .c({carry02[62:0], 1'b0}), .sum(sum11), .carry(carry11) );
+	carry_save_adder #( .BITS(64) ) _csa12 ( .a(sum03), .b({carry03[62:0], 1'b0}), .c(sum04), .sum(sum12), .carry(carry12) );
 	
-	wire [63:0] sum20, sum21;
+	assign pass10 = {carry04[62:0], 1'b0};
+	assign pass11 = pass01;
 	
-	ripple_carry_adder #( .BITS(64) ) _a20 ( .a(sum10), .b(sum11), .sum(sum20), .c_in(1'b0), .c_out(c_out[12]) );
-	ripple_carry_adder #( .BITS(64) ) _a21 ( .a(sum12), .b(sum13), .sum(sum21), .c_in(1'b0), .c_out(c_out[13]) );
+	// Level 2
+	wire [63:0] sum20, sum21, carry20, carry21, pass20, pass21;
 	
-	// Final adder outputs to the product output of the multiplier
-	ripple_carry_adder #( .BITS(64) ) _a30 ( .a(sum20), .b(sum21), .sum(product), .c_in(1'b0), .c_out(c_out[14]) );
+	carry_save_adder #( .BITS(64) ) _csa20 ( .a(sum10), .b({carry10[62:0], 1'b0}), .c(sum11), .sum(sum20), .carry(carry20) );
+	carry_save_adder #( .BITS(64) ) _csa21 ( .a({carry11[62:0], 1'b0}), .b(sum12), .c({carry12[62:0], 1'b0}), .sum(sum21), .carry(carry21) );
+	
+	assign pass20 = pass10;
+	assign pass21 = pass11;
+	
+	// Level 3
+	wire [63:0] sum30, sum31, carry30, carry31;
+	
+	carry_save_adder #( .BITS(64) ) _csa30 ( .a(sum20), .b({carry20[62:0], 1'b0}), .c(sum21), .sum(sum30), .carry(carry30) );
+	carry_save_adder #( .BITS(64) ) _csa31 ( .a({carry21[62:0], 1'b0}), .b(pass20), .c(pass21), .sum(sum31), .carry(carry31) );
+	
+	// Level 4
+	wire [63:0] sum4, carry4, pass4;
+	
+	carry_save_adder #( .BITS(64) ) _csa4 ( .a(sum30), .b({carry30[62:0], 1'b0}), .c(sum31), .sum(sum4), .carry(carry4) );
+	
+	assign pass4 = {carry31[62:0], 1'b0};
+	
+	// Level 5
+	
+	wire [63:0] sum5, carry5;
+	
+	carry_save_adder #( .BITS(64) ) _csa5 ( .a(sum4), .b({carry4[62:0], 1'b0}), .c(pass4), .sum(sum5), .carry(carry5) );
+		
+	// Level 6 (Top Level), Carry Lookahead Adder
+	
+	wire cla_c_out;
+	
+	carry_lookahead_adder #( .BITS16(4) ) _cla6 ( .a(sum5), .b({carry5[62:0], 1'b0}), .sum(product), .c_in(1'b0), .c_out(cla_c_out) );
 	
 endmodule
 
@@ -160,12 +187,13 @@ module booth_bit_pair_multiplier_test;
 	
 	integer i;
 	
-	booth_bit_pair_multiplier mul ( a[31:0], b[31:0], product );
+	booth_bit_pair_multiplier _mul ( .multiplicand(a[31:0]), .multiplier(b[31:0]), .product(product) );
 	
 	initial begin
-		// a <= 1062902654;
-		// b <= -309493541;
-		// #1 $display("Test | multiply %0d * %0d | %0d | %0d", a, b, a * b, product);
+		// Regressions
+		a <= 1062902654;
+		b <= -309493541;
+		#1 $display("Test | multiply regression %0d * %0d | %0d | %0d", a, b, a * b, product);
 		
 		for (i = 0; i < 1000; i = i + 1) begin
 			a <= $random;

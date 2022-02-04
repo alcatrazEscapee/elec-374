@@ -3,10 +3,9 @@ module alu(
 	input [31:0] b,
 	input [11:0] select, // {alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add}
 	output reg [31:0] z, // Outputs for all other instructions
-	output [31:0] hi, // Outputs for div, mul
-	output [31:0] lo
+	output reg [31:0] hi, // Outputs for div, mul
+	output reg [31:0] lo
 );
-
 	// ALU Operations (by select index)
 	// 0 = Add
 	// 1 = Sub
@@ -21,17 +20,19 @@ module alu(
 	// A = Negate
 	// B = Not
 	
-	wire [31:0] z_add_sub, z_shift_right, z_shift_left, z_rotate_right, z_rotate_left, z_and, z_or, z_not, z_neg;
-	
+	wire [31:0] z_add_sub, z_shift_right, z_shift_left, z_and, z_or, z_not;
+	// pre-MUX outputs for mul/div
+	wire [31:0] hi_mul, lo_mul, hi_div, lo_div;
+		
 	// ALU Operations
 	
-	// Add / Subtract
-	wire add_sub_c_out; // Carry out ? maybe set an overflow flag?
-	adder_subtractor add_sub ( .a(a), .b(b), .sum(z_add_sub), .sub(select[1]), .c_out(add_sub_c_out) );
+	// Add / Subtract / Negate
+	wire add_sub_c_out; // todo: overflow flag from carry out?
+	adder_subtractor add_sub ( .a(select[10] ? 32'b0 : a), .b(select[10] ? a : b), .sum(z_add_sub), .sub(select[1] | select[10]), .c_out(add_sub_c_out) );
 	
 	// Shift / Rotate
-	right_shift_32b _shr ( .in(a), .shift(b), .out(z_shift_right) );
-	left_shift_32b  _shl ( .in(a), .shift(b), .out(z_shift_left) );
+	right_shift_32b _shr ( .in(a), .shift(b), .out(z_shift_right), .is_rotate(select[4]) );
+	left_shift_32b  _shl ( .in(a), .shift(b), .out(z_shift_left), .is_rotate(select[5]) );
 	// todo: rotate right
 	// todo: rotate left
 	
@@ -39,12 +40,11 @@ module alu(
 	assign z_or = a | b; // or
 	
 	// Multiplication
-	booth_bit_pair_multiplier mul ( .multiplicand(a), .multiplier(b), .product({hi, lo}) );
+	booth_bit_pair_multiplier mul ( .multiplicand(a), .multiplier(b), .product({hi_mul, lo_mul}) );
 	
 	// Division
-	// todo: divide (assign directly to hi, lo)
-	
-	signed_compliment #( .BITS(32) ) neg ( .in(a), .out(z_neg) ); // neg
+	array_div #( .BITS(32) ) div ( .dividend(a), .divisor(b), .quotient(lo_div), .remainder(hi_div) );
+
 	assign z_not = ~a; // not
 	
 	// Multiplex the outputs together
@@ -54,14 +54,22 @@ module alu(
 			12'b000000000010 : z = z_add_sub;
 			12'b000000000100 : z = z_shift_right;
 			12'b000000001000 : z = z_shift_left;
-			12'b000000010000 : z = z_rotate_right;
-			12'b000000100000 : z = z_rotate_left;
+			12'b000000010000 : z = z_shift_right;
+			12'b000000100000 : z = z_shift_left;
 			12'b000001000000 : z = z_and;
 			12'b000010000000 : z = z_or;
 			// Multiply / Divide output to hi/lo
-			12'b010000000000 : z = z_neg;
+			12'b010000000000 : z = z_add_sub;
 			12'b100000000000 : z = z_not;
 			default : z = 32'b0;
+		endcase
+	end
+	
+	always @(*) begin
+		case (select)
+			12'b000100000000 : {hi, lo} <= {hi_mul, lo_mul};
+			12'b001000000000 : {hi, lo} <= {hi_div, lo_div};
+			default : {hi, lo} <= 64'b0;
 		endcase
 	end
 	
@@ -92,10 +100,16 @@ module alu_test;
 		#1 $display("Test | sub | 124 - 7 = 117 | %0d - %0d = %0d", a, b, z);
 		
 		select <= 12'b000000000100; // Shift Right
-		#1 $display("Test | shift_right | 0000007c >> 00000007 = 00000000 | %h >> %h = %h", a, b, z);
+		#1 $display("Test | shift right | 0000007c >> 00000007 = 00000000 | %h >> %h = %h", a, b, z);
 		
 		select <= 12'b000000001000; // Shift Left
-		#1 $display("Test | shift_left | 0000007c << 00000007 = 00003e00 | %h << %h = %h", a, b, z);
+		#1 $display("Test | shift left | 0000007c << 00000007 = 00003e00 | %h << %h = %h", a, b, z);
+		
+		select <= 12'b000000010000; // Rotate Right
+		#1 $display("Test | rotate right | 0000007c >>R 00000007 = f8000000 | %h >>R %h = %h", a, b, z);
+		
+		select <= 12'b000000100000; // Rotate Left
+		#1 $display("Test | rotate left | 0000007c R<< 00000007 = 00003e00 | %h R<< %h = %h", a, b, z);
 		
 		select <= 12'b000001000000; // And
 		#1 $display("Test | and | 0000007c & 00000007 = 00000004 | %h & %h = %h", a, b, z);
@@ -105,6 +119,9 @@ module alu_test;
 		
 		select <= 12'b000100000000; // Multiply
 		#1 $display("Test | mul | 124 * 7 = (lo 868, hi 0) | %0d * %0d = (lo %0d, hi %0d)", a, b, lo, hi);
+		
+		select <= 12'b001000000000; // Divide
+		#1 $display("Test | div | 124 / 7 = (lo 17, hi 5) | %0d / %0d = (lo %0d, hi %0d)", a, b, lo, hi);
 
 		select <= 12'b010000000000; // Negate
 		#1 $display("Test | neg | -(124) = -124 | -(%0d) = %0d", a, sz);

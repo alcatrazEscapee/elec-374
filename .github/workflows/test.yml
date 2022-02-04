@@ -1,0 +1,51 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Setup Python 3.x
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+      # ModelSim requires these 32-bit libraries to be installed: https://www.intel.com/content/www/us/en/programmable/support/support-resources/knowledge-base/solutions/rd05302012_638.html
+      # Some of these are technically only required for the GUI, but it won't load on a headless server without them.
+    - name: Install ModelSim dependencies
+      run: |
+        sudo dpkg --add-architecture i386
+        sudo apt-get update
+        sudo apt-get install lib32z1 lib32stdc++6 libexpat1:i386 libc6:i386 libsm6:i386 libncurses5:i386 libx11-6:i386 zlib1g:i386 libxext6:i386 libxft2:i386
+    - name: Cache ModelSim
+      id: cache
+      # Fork of github cache action which always caches, even when the run itself fails
+      uses: pat-s/always-upload-cache@v2.1.5
+      with:
+        path: |
+          ~/intelFPGA
+          ~/ModelSim.run
+        key: ${{ runner.os }}-modelsim-20.1
+        restore-keys: |
+          ${{ runner.os }}-modelsim-20.1
+    - name: Install ModelSim if not cached
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: curl 'https://download.altera.com/akdlm/software/acdsinst/20.1std.1/720/ib_installers/ModelSimSetup-20.1.1.720-linux.run' -o ModelSimSetup.run && chmod +x ModelSimSetup.run && ./ModelSimSetup.run --mode unattended --installdir ~/intelFPGA --accept_eula 1
+    - name: Edit ModelSim vco
+      run: sed -i 's/linux_rh60/linux/g' ~/intelFPGA/modelsim_ase/vco
+    - name: Add ModelSim to PATH
+      run: echo "~/intelFPGA/modelsim_ase/bin" >> $GITHUB_PATH
+    - name: Compile all and simulate
+      working-directory: ./project
+      run: make compile-all
+    - name: Run tests
+      working-directory: ./project
+      run: python ./test/setup.py ./out/vsim.log
