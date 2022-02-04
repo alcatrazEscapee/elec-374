@@ -27,7 +27,7 @@ module count_leading_zeros #(
 
 	genvar i;
 	generate
-		for (i = 1; i <= BITS; i = i + 1) begin : gen_cz		
+		for (i = 1; i <= BITS; i = i + 1) begin : gen_cz
 			assign count[i - 1] = zeros[(1 << (i + 1)) - 1:(1 << (i - 1)) + (1 << i)] == {(1 << (i - 1)){1'b0}};
 			assign zeros[(1 << i) - 1:(1 << (i - 1))] = count[i - 1] ?
 				zeros[(1 << (i + 1)) - (1 << (i - 1)) - 1:(1 << i)] :
