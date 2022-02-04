@@ -4,11 +4,11 @@
 int main(int argc, char ** argv) {
     fesetround(FE_TONEAREST);
 
-	if (argc != 2) {
+    if (argc != 2) {
         printf("Usage: fpu [fgij+-]\n");
         return 1;
     }
-	switch (argv[1][0]) {
+    switch (argv[1][0]) {
         case 'f': cast_int_to_float(SIGNED); break;
         case 'g': cast_int_to_float(UNSIGNED); break;
         case 'i': cast_float_to_int(); break;

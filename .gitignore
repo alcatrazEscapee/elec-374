@@ -18,5 +18,6 @@
 !/project/test/*.mem
 
 !/project/src/fpu.c
+!/project/src/fpu.h
 
 __pycache__
