@@ -49,8 +49,8 @@ clean-outputs :
 	rm -rf output_files
 	rm -rf simulation
 	rm -rf work
-	rm cpu_nativelink_simulation.rpt
-	rm transcript
+	rm -f cpu_nativelink_simulation.rpt
+	rm -f transcript
 
 .PHONY : compile-all
 compile-all : $(WORK) $(OUTPUTS)

@@ -39,5 +39,7 @@ module carry_lookahead_adder_16b_test;
 			c_in <= $urandom;
 			#1 $display("Test | add %0d + %0d + %0d | %0d | %0d", a, b, c_in, a + b + c_in, sum);
 		end
+		
+		$finish;
 	end
 endmodule

@@ -52,5 +52,7 @@ module carry_lookahead_adder_4b_test;
 				end
 			end
 		end
+		
+		$finish;
 	end
 endmodule
