@@ -18,3 +18,9 @@ module memory (
 		data_out <= data[address];
 	end
 endmodule
+
+module memory_test;
+	initial begin
+		$finish;
+	end
+endmodule

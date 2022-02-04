@@ -51,7 +51,6 @@ module left_shift_32b_test;
 			#1 $display("Test | left rotate large 0x%h << %0d | 0x%h | 0x%h", in, shift, (in << (shift % 32)) | (in >> (32 - (shift % 32))), out_rotate);
 		end
 		
-		#1;
 		$finish;
 	end
 endmodule
