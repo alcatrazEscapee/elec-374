@@ -15,6 +15,7 @@ module cpu (
 	
 	// To Control Logic
 	output [31:0] ir_out,
+	output reg branch_condition,
 	
 	// Standard
 	input clk,
@@ -73,6 +74,17 @@ module cpu (
 	assign rf_a_addr = ir_rb_or_c2;
 	assign rf_b_addr = ir_rc;
 	
+	// Evaluate the branch condition based on C2
+	
+	always @(*) begin
+		case (ir_rb_or_c2[1:0])
+			2'b00 : branch_condition = rf_a_out == 32'b0;
+			2'b01 : branch_condition = rf_a_out != 32'b0;
+			2'b10 : branch_condition = !rf_a_out[31] && (| rf_a_out[30:0]); // sign bit = 0 and any other bit != 0 => Positive
+			2'b11 : branch_condition = rf_a_out[31]; // sign bit = 1 => Negative
+		endcase
+	end
+	
 	// MA Register
 	// Control Signals: ma_in_pc, ma_in_alu
 	assign ma_en = ma_in_pc | ma_in_alu;
@@ -129,7 +141,7 @@ module cpu (
 			default : rf_in <= 32'b0;
 		endcase
 	end
-		
+	
 	register_file _rf (
 		.write_data(rf_in),
 		.write_addr(rf_en ? rf_z_addr : 4'b0), // When not enabled, writes go to r0 (noop)
