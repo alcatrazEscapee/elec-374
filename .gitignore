@@ -11,6 +11,7 @@
 !/project/Makefile
 !/project/hdl/**/*.v
 !/project/test/setup.py
+!/project/test/*.mem
 !/project/cpu.qpf
 !/project/cpu.qsf
 

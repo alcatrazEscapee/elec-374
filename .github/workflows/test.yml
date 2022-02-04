@@ -43,9 +43,6 @@ jobs:
       run: sed -i 's/linux_rh60/linux/g' ~/intelFPGA/modelsim_ase/vco
     - name: Add ModelSim to PATH
       run: echo "~/intelFPGA/modelsim_ase/bin" >> $GITHUB_PATH
-    - name: Setup ModelSim work library
-      working-directory: ./project
-      run: make work
     - name: Compile all and simulate
       working-directory: ./project
       run: make compile-all

@@ -189,9 +189,6 @@ module booth_bit_pair_multiplier_test;
 	
 	booth_bit_pair_multiplier _mul ( .multiplicand(a[31:0]), .multiplier(b[31:0]), .product(product) );
 	
-	assign ai = {{32{a[31]}}, a};
-	assign bi = {{32{b[31]}}, b};
-	
 	initial begin
 		// Regressions
 		a <= 1062902654;
