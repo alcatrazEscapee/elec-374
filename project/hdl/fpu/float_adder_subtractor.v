@@ -422,6 +422,10 @@ module float_adder_subtractor_test;
 		a <= 32'hdb2a6e04; b <= 32'h5b2a6e06; #1 $display("Test fpu + | regressions | %h | %h | %h", a_in, b_in, sum);
 		a <= 32'h3af13cc4; b <= 32'hbaf13cc4; #1 $display("Test fpu + | regressions | %h | %h | %h", a_in, b_in, sum);
 		
+		add_sub <= 1'b1;
+		
+		a <= 32'h1234567c; b <= 32'h87654321; #1 $display("Test fpu - | regressions | %h | %h | %h", a_in, b_in, sum);
+		
 		$finish;
 	end
 endmodule
