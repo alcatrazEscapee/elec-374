@@ -74,7 +74,7 @@ Branch Instructions use the `C2` field to determine the type of condition:
 
 Floating point support:
 
-- Floating point IEE-745, single precision standard.
+- Floating point IEE-754, single precision standard (`binary32`).
 - There is a seperate register file of floating point registers.
 - Copies between the `RF` and `FF` units can be acomplished by either copy instructions, or cast instructions
 - Floating point operations apply directly to floating point opcodes.
@@ -91,13 +91,18 @@ Floating point operations use the `FPU Opcode` to determine their actual operati
 
 `FPU Opcode` | Name | Assembly | RTN
 ---|---|---|---
-`000` | Copy Register to FPU | `mvrf fA, rB` | `fA <- rB`
-`001` | Copy FPU to Register | `mvfr rA, fB` | `rA <- fB`
-`010` | Cast Register to Float | `crf fA, rB` | `fA <- (float) rB`
-`011` | Cast Float to Register | `cfr rA, fB` | `rA <- (int) fB`
-`100` | Float Add | `fadd fA, fB, fC` | `fA <- fB + fC`
-`101` | Float Subtract | `fsub fA, fB, fC` | `fA <- fB - fC`
-`110` | Float Multiply | `fmul fA, fB, fC` | `fA <- fB * fC`
+`0000` | Move Register to Float | `mvrf fA, rB` | `fA <- rB`
+`0001` | Move Float to Register | `mvfr rA, fB` | `rA <- fB`
+`0010` | Cast Register to Float | `crf fA, rB` | `fA <- (float) rB`
+`0011` | Cast Float to Register | `cfr rA, fB` | `rA <- (int) fB`
+`0100` | Cast Register to Float (Unsigned) | `crf fA, rB` | `fA <- (float) (unsigned int) rB`
+`0101` | Cast Float to Register (Unsigned) | `cfr rA, fB` | `rA <- (unsigned int) fB`
+`0110` | Float Add | `fadd fA, fB, fC` | `fA <- fB + fC`
+`1000` | Float Subtract | `fsub fA, fB, fC` | `fA <- fB - fC`
+`1001` | Float Multiply | `fmul fA, fB, fC` | `fA <- fB * fC`
+`1001` | Float Divide | `fdiv fA, fB, fC` | `fA <- fB / fC`
+`1010` | Float Greater Than | `fgt rA, fB, fC` | `rA <- fB > fC`
+`1011` | Float Equals | `feq rA, fB, fC` | `rA <- fB == fC`
 
 ### Instruction RTN
 

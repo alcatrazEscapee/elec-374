@@ -5,7 +5,7 @@ int main(int argc, char ** argv) {
     fesetround(FE_TONEAREST);
 
     if (argc != 2) {
-        printf("Usage: fpu [fgij+-]\n");
+        printf("Usage: fpu [fgij+-GEL]\n");
         return 1;
     }
     switch (argv[1][0]) {
@@ -15,6 +15,9 @@ int main(int argc, char ** argv) {
         case 'j': cast_float_to_unsigned_int(); break;
         case '+': binary_op_floats(ADD); break;
         case '-': binary_op_floats(SUB); break;
+        case 'G': compare_floats(GREATER_THAN); break;
+        case 'E': compare_floats(EQUALS); break;
+        case 'L': compare_floats(LESS_THAN); break;
         default : printf("Unknown: %c\n", argv[1][0]);
     }
     return 0;
@@ -103,6 +106,25 @@ void binary_op_floats(char op) {
         print_float(FLOAT(j), '|');
         print_float(f, '|');
         print_float(FLOAT(k), '\n');
+    }
+}
+
+void compare_floats(char op) {
+    int32_t i, j, actual;
+    while (scanf("%x", &i) != -1 && scanf("%x", &j) != -1 && scanf("%d", &actual) != -1) {
+        bool expected = 
+            op == GREATER_THAN ? FLOAT(i) > FLOAT(j) :
+            op == LESS_THAN ? FLOAT(i) < FLOAT(j) :
+            op == EQUALS ? FLOAT(i) == FLOAT(j) :
+            0;
+        print_float(FLOAT(i), ' ');
+        printf("%s ", 
+            op == GREATER_THAN ? ">" :
+            op == LESS_THAN ? "<" :
+            op == EQUALS ? "==" :
+            "??");
+        print_float(FLOAT(j), '|');
+        printf("%s|%s\n", expected ? "true" : "false", actual ? "true" : "false");
     }
 }
 
