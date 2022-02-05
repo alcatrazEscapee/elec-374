@@ -9,7 +9,7 @@ module fpu (
 	output reg [31:0] z,
 	
 	// Control Signals
-	input [9:0] select, // {fpu_fdiv, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf, fpu_mvfr, fpu_mvrf}
+	input [11:0] select, // {fpu_feq, fpu_fgt, fpu_fdiv, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf, fpu_mvfr, fpu_mvrf}
 	output illegal,
 
 	// ALU Interface (for mul/div)
@@ -31,40 +31,42 @@ module fpu (
 	// 8 = fmul = Float Multiply
 	// 9 = fdiv = Float Divide
 
-	wire fpu_fdiv, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf, fpu_mvfr, fpu_mvrf;
+	wire fpu_feq, fpu_fgt, fpu_fdiv, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf, fpu_mvfr, fpu_mvrf;
 	wire illegal_cfr;
 	
-	assign {fpu_fdiv, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf, fpu_mvfr, fpu_mvrf} = select;
+	assign {fpu_feq, fpu_fgt, fpu_fdiv, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf, fpu_mvfr, fpu_mvrf} = select;
 	assign illegal = illegal_cfr;
 	
+	// Outputs
 	wire [31:0] z_crf, z_cfr, z_fadd_sub, z_fmul, z_fdiv;
+	wire z_fgt, z_feq;
 	
-	// Cast Register -> Float
+	// FPU Operations
+	
 	cast_int_to_float _crf ( .in(ra), .out(z_crf), .is_signed(fpu_crf) );
-	
-	// Cast Float -> Register
 	cast_float_to_int _cfr ( .in(fa), .out(z_cfr), .is_signed(fpu_cfr), .illegal(illegal_cfr) );
-	
-	// todo: float to int casts
-	
-	// Float Add / Subtract
+		
 	float_adder_subtractor _fadd_sub ( .fa(fa), .fb(fb), .fz(z_fadd_sub), .add_sub(fpu_fsub) );
 	
 	// todo: multiply / divide
 	
+	float_compare _fc ( .fa(fa), .fb(fb), .gt(z_fgt), .eq(z_feq) );
+	
 	always @(*) begin
 		case (select)
-			10'b0000000001 : z = ra; // Move
-			10'b0000000010 : z = fa;
-			10'b0000000100 : z = z_crf; // Signed Casts
-			10'b0000001000 : z = z_cfr;
-			10'b0000010000 : z = z_crf; // Unsigned Casts
-			10'b0000100000 : z = z_cfr;
-			10'b0001000000 : z = z_fadd_sub; // Arithmetic
-			10'b0010000000 : z = z_fadd_sub;
-			10'b0100000000 : z = z_fmul;
-			10'b1000000000 : z = z_fdiv;
-			default        : z = 32'b0;
+			12'b000000000001 : z = ra; // Move
+			12'b000000000010 : z = fa;
+			12'b000000000100 : z = z_crf; // Signed Casts
+			12'b000000001000 : z = z_cfr;
+			12'b000000010000 : z = z_crf; // Unsigned Casts
+			12'b000000100000 : z = z_cfr;
+			12'b000001000000 : z = z_fadd_sub; // Arithmetic
+			12'b000010000000 : z = z_fadd_sub;
+			12'b000100000000 : z = z_fmul;
+			12'b001000000000 : z = z_fdiv;
+			12'b010000000000 : z = {31'b0, z_fgt}; // Compare
+			12'b100000000000 : z = {31'b0, z_feq};
+			default          : z = 32'b0;
 		endcase
 	end
 endmodule
@@ -74,7 +76,7 @@ endmodule
 module fpu_test;
 
 	reg [31:0] ra, rb, fa, fb;
-	reg [9:0] select;
+	reg [11:0] select;
 
 	wire [31:0] z;
 
@@ -92,36 +94,44 @@ module fpu_test;
 
 	initial begin
 		ra <= 32'b0; rb <= 32'b0; fa <= 32'b0; fb <= 32'b0;
-		select <= 10'b0;
+		select <= 12'b0;
 		
 		// Move
-		select <= 10'b0000000001; ra <= 32'h12345678;
+		select <= 12'b000000000001; ra <= 32'h12345678;
 		#1 $display("Test | fpu mvrf | z=0x12345678 | z=0x%h", z);
 		
-		select <= 10'b0000000010; ra <= 32'b0; fa <= 32'h87654321;
+		select <= 12'b000000000010; ra <= 32'b0; fa <= 32'h87654321;
 		#1 $display("Test | fpu mvfr | z=0x87654321 | z=0x%h", z);
 		
 		// Cast (Signed)
-		select <= 10'b0000000100; ra <= 32'h00112233;
+		select <= 12'b000000000100; ra <= 32'h00112233;
 		#1 $display("Test fpu f | fpu crf | %h | %h", ra, z);
 		
-		select <= 10'b0000001000; fa <= 32'h12345678;
+		select <= 12'b000000001000; fa <= 32'h12345678;
 		#1 $display("Test fpu i | fpu cfr | %h | %h | %b", ra, z, _fpu.illegal_cfr);
 		
 		// Cast (Unsigned)
-		select <= 10'b0000010000; ra <= 32'h33221100;
+		select <= 12'b000000010000; ra <= 32'h33221100;
 		#1 $display("Test fpu g | fpu curf | %h | %h", ra, z);
 		
-		select <= 10'b0000100000; ra <= 32'h12345678;
+		select <= 12'b000000100000; ra <= 32'h12345678;
 		#1 $display("Test fpu j | fpu cufr | %h | %h | %b", ra, z, _fpu.illegal_cfr);
 				
-		// Addition / Subtraction
+		// Arithmetic
 		
-		select <= 10'b0001000000; fa <= 32'h12345678; fb <= 32'h87654321;
+		select <= 12'b000001000000; fa <= 32'h12345678; fb <= 32'h87654321;
 		#1 $display("Test fpu + | fpu fadd | %h | %h | %h", fa, fb, z);
 		
-		select <= 10'b0010000000;
+		select <= 12'b000010000000;
 		#1 $display("Test fpu - | fpu fsub | %h | %h | %h", fa, fb, z);
+		
+		// Compare
+		
+		select <= 12'b010000000000;
+		#1 $display("Test fpu > | fpu fgt | %h | %h | %b", fa, fb, z);
+		
+		select <= 12'b100000000000;
+		#1 $display("Test fpu = | fpu feq | %h | %h | %b", fa, fb, z);
 	
 		$finish;
 	end
