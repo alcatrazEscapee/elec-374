@@ -13,8 +13,8 @@ module fpu (
 	output illegal,
 
 	// ALU Interface (for mul/div)
-	output [31:0] alu_a,
-	output [31:0] alu_b,
+	output reg [31:0] alu_a,
+	output reg [31:0] alu_b,
 	input [31:0] alu_hi,
 	input [31:0] alu_lo
 );
@@ -41,14 +41,17 @@ module fpu (
 	wire [31:0] z_crf, z_cfr, z_fadd_sub, z_fmul, z_fdiv;
 	wire z_fgt, z_feq;
 	
+	// ALU Interface
+	wire [31:0] alu_a_mul, alu_b_mul, alu_a_div, alu_b_div;
+	
 	// FPU Operations
 	
 	cast_int_to_float _crf ( .in(ra), .out(z_crf), .is_signed(fpu_crf) );
 	cast_float_to_int _cfr ( .in(fa), .out(z_cfr), .is_signed(fpu_cfr), .illegal(illegal_cfr) );
 		
 	float_adder_subtractor _fadd_sub ( .fa(fa), .fb(fb), .fz(z_fadd_sub), .add_sub(fpu_fsub) );
-	
-	// todo: multiply / divide
+	float_multiplier _fmul ( .fa(fa), .fb(fb), .fz(z_fmul), .alu_a(alu_a_mul), .alu_b(alu_b_mul), .alu_product({alu_hi, alu_lo}) );
+	// todo: float_divider
 	
 	float_compare _fc ( .fa(fa), .fb(fb), .gt(z_fgt), .eq(z_feq) );
 	
@@ -67,6 +70,13 @@ module fpu (
 			12'b010000000000 : z = {31'b0, z_fgt}; // Compare
 			12'b100000000000 : z = {31'b0, z_feq};
 			default          : z = 32'b0;
+		endcase
+		
+		// Output ALU Interface
+		case (select)
+			12'b000100000000 : {alu_a, alu_b} = {alu_a_mul, alu_b_mul};
+			12'b001000000000 : {alu_a, alu_b} = {alu_a_div, alu_b_div};
+			default          : {alu_a, alu_b} = 64'b0;
 		endcase
 	end
 endmodule
