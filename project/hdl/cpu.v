@@ -72,7 +72,7 @@ module cpu (
 	// Map rA, rB, and rC wires to the register file write address, read address A and B, respectively
 	// Branch instructions use rA as a read register, not as a write one.
 	assign rf_z_addr = ir_ra;
-	assign rf_a_addr = opcode == 5'b10010 ? ir_ra : ir_rb_or_c2;
+	assign rf_a_addr = ir_opcode == 5'b10010 ? ir_ra : ir_rb_or_c2;
 	assign rf_b_addr = ir_rc;
 	
 	// Evaluate the branch condition based on C2
