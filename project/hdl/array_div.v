@@ -19,8 +19,6 @@ module array_div #(
 	wire [BITS - 1:0] layer_b_out [-1:BITS - 1];
 	// Remainder sum
 	wire [BITS - 1:0] r_sum;
-	// Not needed, but it makes Quartus happy
-	wire r_c_out;
 	
 	// Instantiate signed_compliment
 	signed_compliment #( .BITS(BITS) ) sc_dividend ( .in(dividend), .out(dividend_comp) );
@@ -74,7 +72,7 @@ module array_div #(
 	endgenerate
 	
 	// generate remainder
-	ripple_carry_adder #( .BITS(BITS) ) _rca ( .a(layer_sum[BITS - 1]), .b(layer_b_out[BITS - 1]), .sum(r_sum), .c_in(1'b0), .c_out(r_c_out) );
+	ripple_carry_adder #( .BITS(BITS) ) _rca ( .a(layer_sum[BITS - 1]), .b(layer_b_out[BITS - 1]), .sum(r_sum), .c_in(1'b0), .c_out() );
 	assign remainder_u = quotient_u[0] ? layer_sum[BITS - 1] : r_sum;
 	
 	// Handle complements of outputs now

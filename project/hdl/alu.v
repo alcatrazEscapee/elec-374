@@ -27,14 +27,15 @@ module alu(
 	// ALU Operations
 	
 	// Add / Subtract / Negate
-	wire add_sub_c_out; // todo: overflow flag from carry out?
-	adder_subtractor add_sub ( .a(select[10] ? 32'b0 : a), .b(select[10] ? a : b), .sum(z_add_sub), .sub(select[1] | select[10]), .c_out(add_sub_c_out) );
+	carry_lookahead_adder #( .BITS16(2) ) _cla (
+		.a(select[10] ? 32'b0 : a),
+		.b(select[10] ? ~a : (select[1] ? ~b : b)),
+		.sum(z_add_sub), .c_in(select[1] | select[10]), .c_out()
+	);
 	
 	// Shift / Rotate
 	right_shift_32b _shr ( .in(a), .shift(b), .out(z_shift_right), .is_rotate(select[4]) );
 	left_shift_32b  _shl ( .in(a), .shift(b), .out(z_shift_left), .is_rotate(select[5]) );
-	// todo: rotate right
-	// todo: rotate left
 	
 	assign z_and = a & b; // and
 	assign z_or = a | b; // or
@@ -58,21 +59,17 @@ module alu(
 			12'b000000100000 : z = z_shift_left;
 			12'b000001000000 : z = z_and;
 			12'b000010000000 : z = z_or;
-			// Multiply / Divide output to hi/lo
 			12'b010000000000 : z = z_add_sub;
 			12'b100000000000 : z = z_not;
-			default : z = 32'b0;
+			default          : z = 32'b0;
 		endcase
-	end
-	
-	always @(*) begin
+		
 		case (select)
-			12'b000100000000 : {hi, lo} <= {hi_mul, lo_mul};
-			12'b001000000000 : {hi, lo} <= {hi_div, lo_div};
-			default : {hi, lo} <= 64'b0;
+			12'b000100000000 : {hi, lo} = {hi_mul, lo_mul};
+			12'b001000000000 : {hi, lo} = {hi_div, lo_div};
+			default          : {hi, lo} <= 64'b0;
 		endcase
 	end
-	
 endmodule
 
 
