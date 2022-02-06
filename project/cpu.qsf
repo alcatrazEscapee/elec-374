@@ -41,7 +41,7 @@ set_global_assignment -name DEVICE EP3C16F484C6
 set_global_assignment -name TOP_LEVEL_ENTITY fpu
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "13.0 SP1"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "14:13:55  JANUARY 24, 2022"
-set_global_assignment -name LAST_QUARTUS_VERSION 13.1
+set_global_assignment -name LAST_QUARTUS_VERSION "13.0 SP1"
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
@@ -66,6 +66,7 @@ set_global_assignment -name VERILOG_FILE hdl/fpu/cast_float_to_int.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/cast_int_to_float.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/count_leading_zeros.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/float_adder_subtractor.v
+set_global_assignment -name VERILOG_FILE hdl/fpu/float_compare.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/fpu.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/greater_than_unsigned.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/round_to_nearest_even.v
@@ -77,17 +78,15 @@ set_global_assignment -name VERILOG_FILE hdl/carry_lookahead_adder.v
 set_global_assignment -name VERILOG_FILE hdl/carry_lookahead_adder_16b.v
 set_global_assignment -name VERILOG_FILE hdl/carry_lookahead_adder_4b.v
 set_global_assignment -name VERILOG_FILE hdl/carry_save_adder.v
-set_global_assignment -name VERILOG_FILE hdl/collecting_right_shift_32b.v
 set_global_assignment -name VERILOG_FILE hdl/cpu.v
 set_global_assignment -name VERILOG_FILE hdl/full_adder.v
-set_global_assignment -name VERILOG_FILE hdl/left_shift_32b.v
+set_global_assignment -name VERILOG_FILE hdl/left_shift.v
 set_global_assignment -name VERILOG_FILE hdl/memory.v
 set_global_assignment -name VERILOG_FILE hdl/register.v
 set_global_assignment -name VERILOG_FILE hdl/register_file.v
-set_global_assignment -name VERILOG_FILE hdl/right_shift_32b.v
+set_global_assignment -name VERILOG_FILE hdl/right_shift.v
 set_global_assignment -name VERILOG_FILE hdl/ripple_carry_adder.v
 set_global_assignment -name VERILOG_FILE hdl/signed_compliment.v
-set_global_assignment -name VERILOG_FILE hdl/fpu/float_compare.v
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
