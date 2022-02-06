@@ -26,13 +26,13 @@ def main():
                 i = 0
             if output.startswith('# ** Error:'):
                 test = mock_fail('External error in module %s:\n  %s\n  check out/vsim.log for more info' % (target, output))
-                test.__name__ = 'test %d : %s compile' % (i, target)
+                test.__name__ = 'test %07d : %s compile' % (i, target)
                 setattr (ModelSim, test.__name__, test)
                 i += 1
             if output.startswith('# Test'):
                 _, name, expected, actual = map(lambda x: ' '.join(x.split()), output.split('|'))
                 test = mock(expected, actual, '%s : Expected %s : Actual %s' % (name, expected, actual))
-                test.__name__ = 'test %d : %s : %s' % (i, target, name)
+                test.__name__ = 'test %07d : %s : %s' % (i, target, name)
                 setattr (ModelSim, test.__name__, test)
                 i += 1
     sys.argv = sys.argv[:1]

@@ -34,8 +34,11 @@ module alu(
 	);
 	
 	// Shift / Rotate
-	right_shift_32b _shr ( .in(a), .shift(b), .out(z_shift_right), .is_rotate(select[4]) );
-	left_shift_32b  _shl ( .in(a), .shift(b), .out(z_shift_left), .is_rotate(select[5]) );
+	wire shift_is_zero;
+	assign shift_is_zero = | b[31:5]; // If any of the upper bits are set, shift outputs will be all zero. Rotates ignore upper bits
+	
+	right_shift #( .BITS(32), .SHIFT_BITS(32) ) _shr ( .in(a), .shift(b), .out(z_shift_right), .is_rotate(select[4]), .accumulate() );
+	left_shift  #( .BITS(32), .SHIFT_BITS(32) ) _shl ( .in(a), .shift(b), .out(z_shift_left), .is_rotate(select[5]), .accumulate() );
 	
 	assign z_and = a & b; // and
 	assign z_or = a | b; // or
