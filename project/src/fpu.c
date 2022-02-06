@@ -1,11 +1,14 @@
 #include "fpu.h"
 
+void cast_int_to_float(char);
+void cast_float_to_int();
+void cast_float_to_unsigned_int();
+void binary_op_floats(char);
+void reciprocal_float();
+void compare_floats(char);
+
 
 int main(int argc, char ** argv) {
-
-    _Static_assert(sizeof(int32_t) == 4, "sizeof(int32_t) == 4");
-    _Static_assert(sizeof(uint32_t) == 4, "sizeof(uint32_t) == 4");
-    _Static_assert(sizeof(float) == 4, "sizeof(float) == 4");
 
     fesetround(FE_TONEAREST);
 
@@ -22,37 +25,13 @@ int main(int argc, char ** argv) {
         case 's': binary_op_floats(SUB); break;
         case 'x': binary_op_floats(MUL); break;
         case 'd': binary_op_floats(DIV); break;
+        case 'r': reciprocal_float(); break;
         case 'G': compare_floats(GREATER_THAN); break;
         case 'E': compare_floats(EQUALS); break;
         case 'L': compare_floats(LESS_THAN); break;
         default : printf("Unknown: %c\n", argv[1][0]);
     }
     return 0;
-}
-
-void print_float(float value, char end) {
-    int32_t raw = INT(value);
-    printf("%08x : ", raw);
-    print_bits(&raw, 1);
-    printf(" ");
-    print_bits(&raw, 8);
-    printf(" ");
-    print_bits(&raw, 23);
-    printf(" = %g%c", value, end);
-}
-
-void print_int(int32_t value, char u, char end) {
-    printf("%08x = ", value);
-    if (u == SIGNED) printf("%d", value);
-    else printf("%u", UINT(value));
-    printf("%c", end);
-}
-
-void print_bits(int32_t* value, uint32_t count) {
-    for (uint32_t i = 0; i < count; i++) {
-        putchar((*value & 0x80000000) ? '1' : '0');
-        *value <<= 1;
-    }
 }
 
 void cast_int_to_float(char u) {
@@ -118,6 +97,17 @@ void binary_op_floats(char op) {
     }
 }
 
+void reciprocal_float() {
+    int32_t i, j;
+    while (scanf("%x", &i) != -1 && scanf("%x", &j) != -1) {
+        float f = 1.0f / FLOAT(i), g = FLOAT(j), err = fabsf(f - g) / fmaxf(fabsf(f), fabsf(g));
+        print_float(FLOAT(i), '|');
+        print_float(f, '|');
+        print_float(g, '|');
+        printf("%e|%s\n", err, err < 1e-3 ? "true" : "false");
+    }
+}
+
 void compare_floats(char op) {
     int32_t i, j, actual;
     while (scanf("%x", &i) != -1 && scanf("%x", &j) != -1 && scanf("%d", &actual) != -1) {
@@ -135,35 +125,4 @@ void compare_floats(char op) {
         print_float(FLOAT(j), '|');
         printf("%s|%s\n", expected ? "true" : "false", actual ? "true" : "false");
     }
-}
-
-
-#define FLT_UINT_MAX_P1 ((UINT_MAX/2 + 1)*2.0f)
-#define FLT_INT_MAX_P1 ((INT_MAX/2 + 1)*2.0f)
-
-bool convert_float_to_int(int32_t *i, float f) {
-    #if INT_MIN == -INT_MAX
-    // Rare non 2's complement integer
-    if (fabsf(f) < FLT_INT_MAX_P1) {
-        *i = (int32_t) f;
-        return true;
-    }
-    #else
-    // Do not use f + 1 > INT_MIN as it may incur rounding
-    // Do not use f > INT_MIN - 1.0f as it may incur rounding
-    // f - INT_MIN is expected to be exact for values near the limit
-    if (f - INT_MIN > -1 && f < FLT_INT_MAX_P1) {
-        *i = (int32_t) f;
-        return true;
-    }
-    #endif
-    return false;  // out of range
-}
-
-bool convert_float_to_unsigned(uint32_t *u, float f) {
-    if (f > -1.0f && f < FLT_UINT_MAX_P1) {
-        *u = (uint32_t) f;
-        return true;
-    }
-    return false;  // out of range
 }

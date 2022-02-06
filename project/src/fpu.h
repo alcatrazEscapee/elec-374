@@ -1,3 +1,6 @@
+#ifndef FPU_H
+#define FPU_H
+
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
@@ -7,6 +10,9 @@
 
 #pragma STDC FENV_ACCESS ON
 
+_Static_assert(sizeof(int32_t) == 4, "sizeof(int32_t) == 4");
+_Static_assert(sizeof(uint32_t) == 4, "sizeof(uint32_t) == 4");
+_Static_assert(sizeof(float) == 4, "sizeof(float) == 4");
 
 #define SIGNED '-'
 #define UNSIGNED '+'
@@ -28,14 +34,63 @@ void print_float(float, char);
 void print_int(int32_t, char, char);
 void print_bits(int32_t*, uint32_t);
 
-void cast_int_to_float(char);
-void cast_float_to_int();
-void cast_float_to_unsigned_int();
-void binary_op_floats(char);
-void compare_floats(char);
+
+void print_float(float value, char end) {
+    int32_t raw = INT(value);
+    printf("%08x : ", raw);
+    print_bits(&raw, 1);
+    printf(" ");
+    print_bits(&raw, 8);
+    printf(" ");
+    print_bits(&raw, 23);
+    printf(" = %g%c", value, end);
+}
+
+void print_int(int32_t value, char u, char end) {
+    printf("%08x = ", value);
+    if (u == SIGNED) printf("%d", value);
+    else printf("%u", UINT(value));
+    printf("%c", end);
+}
+
+void print_bits(int32_t* value, uint32_t count) {
+    for (uint32_t i = 0; i < count; i++) {
+        putchar((*value & 0x80000000) ? '1' : '0');
+        *value <<= 1;
+    }
+}
 
 // Limits for float -> int32_t and uint32_t casts
 // https://stackoverflow.com/questions/46928840/what-happens-when-casting-floating-point-types-to-unsigned-integer-types-when-th
 
-bool convert_float_to_int(int32_t *i, float f);
-bool convert_float_to_unsigned(uint32_t *u, float f);
+#define FLT_UINT_MAX_P1 ((UINT_MAX/2 + 1)*2.0f)
+#define FLT_INT_MAX_P1 ((INT_MAX/2 + 1)*2.0f)
+
+bool convert_float_to_int(int32_t *i, float f) {
+    #if INT_MIN == -INT_MAX
+    // Rare non 2's complement integer
+    if (fabsf(f) < FLT_INT_MAX_P1) {
+        *i = (int32_t) f;
+        return true;
+    }
+    #else
+    // Do not use f + 1 > INT_MIN as it may incur rounding
+    // Do not use f > INT_MIN - 1.0f as it may incur rounding
+    // f - INT_MIN is expected to be exact for values near the limit
+    if (f - INT_MIN > -1 && f < FLT_INT_MAX_P1) {
+        *i = (int32_t) f;
+        return true;
+    }
+    #endif
+    return false;  // out of range
+}
+
+bool convert_float_to_unsigned(uint32_t *u, float f) {
+    if (f > -1.0f && f < FLT_UINT_MAX_P1) {
+        *u = (uint32_t) f;
+        return true;
+    }
+    return false;  // out of range
+}
+
+#endif

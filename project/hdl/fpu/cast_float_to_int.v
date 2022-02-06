@@ -28,7 +28,7 @@ module cast_float_to_int (
 	wire [31:0] normalized;
 	
 	ripple_carry_adder #( .BITS(8) ) _exp_sub ( .a(/* 158 */ 8'b10011110), .b(~exponent), .sum(shift_amount), .c_in(1'b1), .c_out(exp_carry_out) );
-	right_shift_32b _exp_shift ( .in({1'b1, mantissa, 8'b0}), .shift({24'b0, shift_amount}), .out(normalized) );
+	right_shift #( .BITS(32), .SHIFT_BITS(8) ) _exp_shift ( .in({1'b1, mantissa, 8'b0}), .shift(shift_amount), .out(normalized), .is_rotate(1'b0), .accumulate() );
 
 	// Compliment the result for negative values
 	wire [31:0] normalized_c;
