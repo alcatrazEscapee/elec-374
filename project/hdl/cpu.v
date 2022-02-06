@@ -15,6 +15,7 @@ module cpu (
 	
 	// To Control Logic
 	output [31:0] ir_out,
+	output reg branch_condition,
 	
 	// Standard
 	input clk,
@@ -69,9 +70,21 @@ module cpu (
 	assign constant_c = {{13{ir_constant_c[18]}}, ir_constant_c};
 	
 	// Map rA, rB, and rC wires to the register file write address, read address A and B, respectively
+	// Branch instructions use rA as a read register, not as a write one.
 	assign rf_z_addr = ir_ra;
-	assign rf_a_addr = ir_rb_or_c2;
+	assign rf_a_addr = ir_opcode == 5'b10010 ? ir_ra : ir_rb_or_c2;
 	assign rf_b_addr = ir_rc;
+	
+	// Evaluate the branch condition based on C2
+	
+	always @(*) begin
+		case (ir_rb_or_c2[1:0])
+			2'b00 : branch_condition = rf_a_out == 32'b0;
+			2'b01 : branch_condition = rf_a_out != 32'b0;
+			2'b10 : branch_condition = !rf_a_out[31] && (| rf_a_out[30:0]); // sign bit = 0 and any other bit != 0 => Positive
+			2'b11 : branch_condition = rf_a_out[31]; // sign bit = 1 => Negative
+		endcase
+	end
 	
 	// MA Register
 	// Control Signals: ma_in_pc, ma_in_alu
@@ -129,7 +142,7 @@ module cpu (
 			default : rf_in <= 32'b0;
 		endcase
 	end
-		
+	
 	register_file _rf (
 		.write_data(rf_in),
 		.write_addr(rf_en ? rf_z_addr : 4'b0), // When not enabled, writes go to r0 (noop)
@@ -190,6 +203,21 @@ module cpu_test;
 		.ir_out(ir_out), .clk(clk), .clr(clr)
 	);
 	
+	task control_reset();
+		// Clears all control signal inputs before each step
+		begin
+			ir_en <= 1'b0;
+			pc_increment <= 1'b0; pc_in_alu <= 1'b0; pc_in_rf_a <= 1'b0;
+			ma_in_pc <= 1'b0; ma_in_alu <= 1'b0;
+			md_in_memory <= 1'b0; md_in_rf_b <= 1'b0;
+			alu_a_in_rf <= 1'b0; alu_a_in_pc <= 1'b0;
+			alu_b_in_rf <= 1'b0; alu_b_in_constant <= 1'b0;
+			lo_en <= 1'b0; hi_en <= 1'b0;
+			rf_in_alu <= 1'b0; rf_in_hi <= 1'b0; rf_in_lo <= 1'b0; rf_in_md <= 1'b0;
+			{alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add} <= 12'b0;
+		end
+	endtask
+	
 	// Clock
 	initial begin
 		clk <= 1'b1;
@@ -198,20 +226,13 @@ module cpu_test;
 	
 	initial begin
 		// Zero all inputs
-		ir_en <= 1'b0;
-		pc_increment <= 1'b0; pc_in_alu <= 1'b0; pc_in_rf_a <= 1'b0;
-		ma_in_pc <= 1'b0; ma_in_alu <= 1'b0;
-		md_in_memory <= 1'b0; md_in_rf_b <= 1'b0;
-		alu_a_in_rf <= 1'b0; alu_a_in_pc <= 1'b0;
-		alu_b_in_rf <= 1'b0; alu_b_in_constant <= 1'b0;
-		lo_en <= 1'b0; hi_en <= 1'b0;
-		rf_in_alu <= 1'b0; rf_in_hi <= 1'b0; rf_in_lo <= 1'b0; rf_in_md <= 1'b0;
-		{alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add} <= 12'b0;
+		control_reset();
 		clr <= 1'b0;
 		#10
 		
 		// Start
-		#1 clr <= 1'b1;
+		#1
+		clr <= 1'b1;
 		
 		// Initialize Memory
 		$display("Initializing Memory");
@@ -225,305 +246,250 @@ module cpu_test;
 		#10 $display("Test | addi r2 r0 53 @ T0 | pc=4, ma=0 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		pc_increment <= 1'b0; ma_in_pc <= 1'b0;
-		md_in_memory <= 1'b1;
+		control_reset(); md_in_memory <= 1'b1;
 		#10 $display("Test | addi r2 r0 53 @ T1 | md=0x59000035 | md=0x%h", _dp._md.d);
 		
 		// T2
-		md_in_memory <= 1'b0;
-		ir_en <= 1'b1;
+		control_reset(); ir_en <= 1'b1;
 		#10 $display("Test | addi r2 r0 53 @ T2 | ir=0x59000035 | ir=0x%h", _dp._ir.d);
 		
 		// T3
-		ir_en <= 1'b0;
-		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
+		control_reset(); alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
 		#10 $display("Test | addi r2 r0 53 @ T3 | a=0, b=53, z=53, r2=53 | a=%0d, b=%0d, z=%0d, r2=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z, _dp._rf.data[2]);
 		
 		// addi r4, r0, 28
 		
 		// T0
-		alu_a_in_rf <= 1'b0; alu_b_in_constant <= 1'b0; rf_in_alu <= 1'b0; alu_add <= 1'b0;
-		pc_increment <= 1'b1; ma_in_pc <= 1'b1;
+		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
 		#10 $display("Test | addi r4 r0 28 @ T0 | pc=8, ma=4 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		pc_increment <= 1'b0; ma_in_pc <= 1'b0;
-		md_in_memory <= 1'b1;
+		control_reset(); md_in_memory <= 1'b1;
 		#10 $display("Test | addi r4 r0 28 @ T1 | md=0x5a00001c | md=0x%h", _dp._md.d);
 		
 		// T2
-		md_in_memory <= 1'b0;
-		ir_en <= 1'b1;
+		control_reset(); ir_en <= 1'b1;
 		#10 $display("Test | addi r4 r0 28 @ T2 | ir=0x5a00001c | ir=0x%h", _dp._ir.d);
 		
 		// T3
-		ir_en <= 1'b0;
-		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
+		control_reset(); alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
 		#10 $display("Test | addi r4 r0 28 @ T3 | a=0, b=28, z=28, r4=28 | a=%0d, b=%0d, z=%0d, r4=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z, _dp._rf.data[4]);
 				
 		// and r5, r2, r4
 		
 		// T0
-		alu_a_in_rf <= 1'b0; alu_b_in_constant <= 1'b0; rf_in_alu <= 1'b0; alu_add <= 1'b0;
-		pc_increment <= 1'b1; ma_in_pc <= 1'b1;
+		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
 		#10 $display("Test | and r5 r2 r4 @ T0 | pc=12, ma=8 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		pc_increment <= 1'b0; ma_in_pc <= 1'b0;
-		md_in_memory <= 1'b1;
+		control_reset(); md_in_memory <= 1'b1;
 		#10 $display("Test | and r5 r2 r4 @ T1 | md=0x4a920000 | md=0x%h", _dp._md.d);
 		
 		// T2
-		md_in_memory <= 1'b0;
-		ir_en <= 1'b1;
+		control_reset(); ir_en <= 1'b1;
 		#10 $display("Test | and r5 r2 r4 @ T2 | ir=0x4a920000 | ir=0x%h", _dp._ir.d);
 		
 		// T3
-		ir_en <= 1'b0;
-		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_and <= 1'b1;
+		control_reset(); alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_and <= 1'b1;
 		#10 $display("Test | and r5 r2 r4 @ T3 | a=53, b=28, z=20, r5=20 | a=%0d, b=%0d, z=%0d, r5=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z, _dp._rf.data[5]);
 		
 		// or r5, r2, r4
 		
 		// T0
-		alu_a_in_rf <= 1'b0; alu_b_in_rf <= 1'b0; rf_in_alu <= 1'b0; alu_and <= 1'b0;
-		pc_increment <= 1'b1; ma_in_pc <= 1'b1;
+		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
 		#10 $display("Test | or r5 r2 r4 @ T0 | pc=16, ma=12 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		pc_increment <= 1'b0; ma_in_pc <= 1'b0;
-		md_in_memory <= 1'b1;
+		control_reset(); md_in_memory <= 1'b1;
 		#10 $display("Test | or r5 r2 r4 @ T1 | md=0x52920000 | md=0x%h", _dp._md.d);
 		
 		// T2
-		md_in_memory <= 1'b0;
-		ir_en <= 1'b1;
+		control_reset(); ir_en <= 1'b1;
 		#10 $display("Test | or r5 r2 r4 @ T2 | ir=0x52920000 | ir=0x%h", _dp._ir.d);
 		
 		// T3
-		ir_en <= 1'b0;
-		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_or <= 1'b1;
+		control_reset(); alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_or <= 1'b1;
 		#10 $display("Test | or r5 r2 r4 @ T3 | a=53, b=28, z=61, r5=61 | a=%0d, b=%0d, z=%0d, r5=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z, _dp._rf.data[5]);
 
 		// add r5, r2, r4
 		
 		// T0
-		alu_a_in_rf <= 1'b0; alu_b_in_rf <= 1'b0; rf_in_alu <= 1'b0; alu_or <= 1'b0;
-		pc_increment <= 1'b1; ma_in_pc <= 1'b1;
+		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
 		#10 $display("Test | add r5 r2 r4 @ T0 | pc=20, ma=16 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		pc_increment <= 1'b0; ma_in_pc <= 1'b0;
-		md_in_memory <= 1'b1;
+		control_reset(); md_in_memory <= 1'b1;
 		#10 $display("Test | add r5 r2 r4 @ T1 | md=0x1a920000 | md=0x%h", _dp._md.d);
 		
 		// T2
-		md_in_memory <= 1'b0;
-		ir_en <= 1'b1;
+		control_reset(); ir_en <= 1'b1;
 		#10 $display("Test | add r5 r2 r4 @ T2 | ir=0x1a920000 | ir=0x%h", _dp._ir.d);
 		
 		// T3
-		ir_en <= 1'b0;
-		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
+		control_reset(); alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
 		#10 $display("Test | add r5 r2 r4 @ T3 | a=53, b=28, z=81, r5=81 | a=%0d, b=%0d, z=%0d, r5=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z, _dp._rf.data[5]);
 			
 		// sub r5, r2, r4
 		
 		// T0
-		alu_a_in_rf <= 1'b0; alu_b_in_rf <= 1'b0; rf_in_alu <= 1'b0; alu_add <= 1'b0;
-		pc_increment <= 1'b1; ma_in_pc <= 1'b1;
+		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
 		#10 $display("Test | sub r5 r2 r4 @ T0 | pc=24, ma=20 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		pc_increment <= 1'b0; ma_in_pc <= 1'b0;
-		md_in_memory <= 1'b1;
+		control_reset(); md_in_memory <= 1'b1;
 		#10 $display("Test | sub r5 r2 r4 @ T1 | md=0x22920000 | md=0x%h", _dp._md.d);
 		
 		// T2
-		md_in_memory <= 1'b0;
-		ir_en <= 1'b1;
+		control_reset(); ir_en <= 1'b1;
 		#10 $display("Test | sub r5 r2 r4 @ T2 | ir=0x22920000 | ir=0x%h", _dp._ir.d);
 		
 		// T3
-		ir_en <= 1'b0;
-		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_sub <= 1'b1;
+		control_reset(); alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_sub <= 1'b1;
 		#10 $display("Test | sub r5 r2 r4 @ T3 | a=53, b=28, z=25, r5=25 | a=%0d, b=%0d, z=%0d, r5=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z, _dp._rf.data[5]);
 		
 		// shr r5, r2, r4
 		
 		// T0
-		alu_a_in_rf <= 1'b0; alu_b_in_rf <= 1'b0; rf_in_alu <= 1'b0; alu_sub <= 1'b0;
-		pc_increment <= 1'b1; ma_in_pc <= 1'b1;
+		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
 		#10 $display("Test | shr r5 r2 r4 @ T0 | pc=28, ma=24 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		pc_increment <= 1'b0; ma_in_pc <= 1'b0;
-		md_in_memory <= 1'b1;
+		control_reset(); md_in_memory <= 1'b1;
 		#10 $display("Test | shr r5 r2 r4 @ T1 | md=0x2a920000 | md=0x%h", _dp._md.d);
 		
 		// T2
-		md_in_memory <= 1'b0;
-		ir_en <= 1'b1;
+		control_reset(); ir_en <= 1'b1;
 		#10 $display("Test | shr r5 r2 r4 @ T2 | ir=0x2a920000 | ir=0x%h", _dp._ir.d);
 		
 		// T3
-		ir_en <= 1'b0;
-		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_shr <= 1'b1;
+		control_reset(); alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_shr <= 1'b1;
 		#10 $display("Test | shr r5 r2 r4 @ T3 | a=53, b=28, z=0, r5=0 | a=%0d, b=%0d, z=%0d, r5=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z, _dp._rf.data[5]);
 		
 		
 		// shl r5, r2, r4
 		
 		// T0
-		alu_a_in_rf <= 1'b0; alu_b_in_rf <= 1'b0; rf_in_alu <= 1'b0; alu_shr <= 1'b0;
-		pc_increment <= 1'b1; ma_in_pc <= 1'b1;
+		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
 		#10 $display("Test | shl r5 r2 r4 @ T0 | pc=32, ma=28 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		pc_increment <= 1'b0; ma_in_pc <= 1'b0;
-		md_in_memory <= 1'b1;
+		control_reset(); md_in_memory <= 1'b1;
 		#10 $display("Test | shl r5 r2 r4 @ T1 | md=0x32920000 | md=0x%h", _dp._md.d);
 		
 		// T2
-		md_in_memory <= 1'b0;
-		ir_en <= 1'b1;
+		control_reset(); ir_en <= 1'b1;
 		#10 $display("Test | shl r5 r2 r4 @ T2 | ir=0x32920000 | ir=0x%h", _dp._ir.d);
 		
 		// T3
-		ir_en <= 1'b0;
-		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_shl <= 1'b1;
+		control_reset(); alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_shl <= 1'b1;
 		#10 $display("Test | shl r5 r2 r4 @ T3 | a=53, b=28, z=1342177280, r5=1342177280 | a=%0d, b=%0d, z=%0d, r5=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z, _dp._rf.data[5]);
 		
 		// ror r5, r2, r4
 		
 		// T0
-		alu_a_in_rf <= 1'b0; alu_b_in_rf <= 1'b0; rf_in_alu <= 1'b0; alu_shl <= 1'b0;
-		pc_increment <= 1'b1; ma_in_pc <= 1'b1;
+		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
 		#10 $display("Test | ror r5 r2 r4 @ T0 | pc=36, ma=32 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		pc_increment <= 1'b0; ma_in_pc <= 1'b0;
-		md_in_memory <= 1'b1;
+		control_reset(); md_in_memory <= 1'b1;
 		#10 $display("Test | ror r5 r2 r4 @ T1 | md=0x3a920000 | md=0x%h", _dp._md.d);
 		
 		// T2
-		md_in_memory <= 1'b0;
-		ir_en <= 1'b1;
+		control_reset(); ir_en <= 1'b1;
 		#10 $display("Test | ror r5 r2 r4 @ T2 | ir=0x3a920000 | ir=0x%h", _dp._ir.d);
 		
 		// T3
-		ir_en <= 1'b0;
-		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_ror <= 1'b1;
+		control_reset(); alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_ror <= 1'b1;
 		#10 $display("Test | ror r5 r2 r4 @ T3 | a=53, b=28, z=848, r5=848 | a=%0d, b=%0d, z=%0d, r5=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z, _dp._rf.data[5]);
 		
 		// rol r5, r2, r4
 		
 		// T0
-		alu_a_in_rf <= 1'b0; alu_b_in_rf <= 1'b0; rf_in_alu <= 1'b0; alu_ror <= 1'b0;
-		pc_increment <= 1'b1; ma_in_pc <= 1'b1;
+		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
 		#10 $display("Test | rol r5 r2 r4 @ T0 | pc=40, ma=36 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		pc_increment <= 1'b0; ma_in_pc <= 1'b0;
-		md_in_memory <= 1'b1;
+		control_reset(); md_in_memory <= 1'b1;
 		#10 $display("Test | rol r5 r2 r4 @ T1 | md=0x42920000 | md=0x%h", _dp._md.d);
 		
 		// T2
-		md_in_memory <= 1'b0;
-		ir_en <= 1'b1;
+		control_reset(); ir_en <= 1'b1;
 		#10 $display("Test | rol r5 r2 r4 @ T2 | ir=0x42920000 | ir=0x%h", _dp._ir.d);
 		
 		// T3
-		ir_en <= 1'b0;
-		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_rol <= 1'b1;
+		control_reset(); alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_rol <= 1'b1;
 		#10 $display("Test | rol r5 r2 r4 @ T3 | a=53, b=28, z=1342177283, r5=1342177283 | a=%0d, b=%0d, z=%0d, r5=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z, _dp._rf.data[5]);
 		
 		
 		// mul r2, r4
 		
 		// T0
-		alu_a_in_rf <= 1'b0; alu_b_in_rf <= 1'b0; rf_in_alu <= 1'b0; alu_rol <= 1'b0;
-		pc_increment <= 1'b1; ma_in_pc <= 1'b1;
+		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
 		#10 $display("Test | mul r2 r4 @ T0 | pc=44, ma=40 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		pc_increment <= 1'b0; ma_in_pc <= 1'b0;
-		md_in_memory <= 1'b1;
+		control_reset(); md_in_memory <= 1'b1;
 		#10 $display("Test | mul r2 r4 @ T1 | md=0x70120000 | md=0x%h", _dp._md.d);
 		
 		// T2
-		md_in_memory <= 1'b0;
-		ir_en <= 1'b1;
+		control_reset(); ir_en <= 1'b1;
 		#10 $display("Test | mul r2 r4 @ T2 | ir=0x70120000 | ir=0x%h", _dp._ir.d);
 		
 		// T3
-		ir_en <= 1'b0;
-		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; alu_mul = 1'b1; hi_en = 1'b1; lo_en = 1'b1;
+		control_reset(); alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; alu_mul <= 1'b1; hi_en <= 1'b1; lo_en <= 1'b1;
 		#10 $display("Test | mul r2 r4 @ T3 | a=53, b=28, hi=0, lo=1484 | a=%0d, b=%0d, hi=%0d, lo=%0d", _dp._alu.a, _dp._alu.b, _dp._hi.d, _dp._lo.d);
 		
 		
 		// div r2, r4
 		
 		// T0
-		alu_a_in_rf <= 1'b0; alu_b_in_rf <= 1'b0; alu_mul = 1'b0; hi_en = 1'b0; lo_en = 1'b0;
-		pc_increment <= 1'b1; ma_in_pc <= 1'b1;
+		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
 		#10 $display("Test | div r2 r4 @ T0 | pc=48, ma=44 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		pc_increment <= 1'b0; ma_in_pc <= 1'b0;
-		md_in_memory <= 1'b1;
+		control_reset(); md_in_memory <= 1'b1;
 		#10 $display("Test | div r2 r4 @ T1 | md=0x78120000 | md=0x%h", _dp._md.d);
 		
 		// T2
-		md_in_memory <= 1'b0;
-		ir_en <= 1'b1;
+		control_reset(); ir_en <= 1'b1;
 		#10 $display("Test | div r2 r4 @ T2 | ir=0x78120000 | ir=0x%h", _dp._ir.d);
 		
 		// T3
-		ir_en <= 1'b0;
-		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; alu_div = 1'b1; hi_en = 1'b1; lo_en = 1'b1;
+		control_reset(); alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; alu_div <= 1'b1; hi_en <= 1'b1; lo_en <= 1'b1;
 		#10 $display("Test | div r2 r4 @ T3 | a=53, b=28, hi=25, lo=1 | a=%0d, b=%0d, hi=%0d, lo=%0d", _dp._alu.a, _dp._alu.b, _dp._hi.d, _dp._lo.d);
 	
 		// neg r5, r2
 		
-		alu_a_in_rf <= 1'b0; alu_b_in_rf <= 1'b0; alu_div = 1'b0; hi_en = 1'b0; lo_en = 1'b0;
-		pc_increment <= 1'b1; ma_in_pc <= 1'b1;
+		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
 		#10 $display("Test | neg r5 r2 @ T0 | pc=52, ma=48 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		pc_increment <= 1'b0; ma_in_pc <= 1'b0;
-		md_in_memory <= 1'b1;
+		control_reset(); md_in_memory <= 1'b1;
 		#10 $display("Test | neg r5 r2 @ T1 | md=0x82900000 | md=0x%h", _dp._md.d);
 		
 		// T2
-		md_in_memory <= 1'b0;
-		ir_en <= 1'b1;
+		control_reset(); ir_en <= 1'b1;
 		#10 $display("Test | neg r5 r2 @ T2 | ir=0x82900000 | ir=0x%h", _dp._ir.d);
 		
 		// T3
-		ir_en <= 1'b0;
-		alu_a_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_neg <= 1'b1;
+		control_reset(); alu_a_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_neg <= 1'b1;
 		#10 $display("Test | neg r5 r2 @ T3 | a=53, z=-53, r5=-53 | a=%0d, z=%0d, r5=%0d", _dp._alu.a, $signed(_dp._alu.z), $signed(_dp._rf.data[5]));
 		
 		// not r5, r2
 		
-		alu_a_in_rf <= 1'b0; rf_in_alu <= 1'b0; alu_neg <= 1'b0;
-		pc_increment <= 1'b1; ma_in_pc <= 1'b1;
+		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
 		#10 $display("Test | not r5 r2 @ T0 | pc=56, ma=52 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		pc_increment <= 1'b0; ma_in_pc <= 1'b0;
-		md_in_memory <= 1'b1;
+		control_reset(); md_in_memory <= 1'b1;
 		#10 $display("Test | not r5 r2 @ T1 | md=0x8a900000 | md=0x%h", _dp._md.d);
 		
 		// T2
-		md_in_memory <= 1'b0;
-		ir_en <= 1'b1;
+		control_reset(); ir_en <= 1'b1;
 		#10 $display("Test | not r5 r2 @ T2 | ir=0x8a900000 | ir=0x%h", _dp._ir.d);
 		
 		// T3
-		ir_en <= 1'b0;
-		alu_a_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_not <= 1'b1;
+		control_reset(); alu_a_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_not <= 1'b1;
 		#10; $display("Test | not r5 r2 @ T3 | a=0x00000035, z=0xffffffca, r5=0xffffffca | a=0x%h, z=0x%h, r5=0x%h", _dp._alu.a, _dp._alu.z, _dp._rf.data[5]);
 		
 		$finish;

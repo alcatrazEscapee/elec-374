@@ -101,7 +101,7 @@ module float_adder_subtractor (
 	wire [31:0] m_lo_norm_32b;	
 	wire m_lo_bits;
 	
-	collecting_right_shift_32b _m_lz_shift ( .in({4'b0, m_lo_long}), .shift({24'b0, e_delta}), .out(m_lo_norm_32b), .collector(m_lo_bits) );
+	right_shift #( .BITS(32), .SHIFT_BITS(8) ) _m_lz_shift ( .in({4'b0, m_lo_long}), .shift(e_delta), .out(m_lo_norm_32b), .is_rotate(1'b0), .accumulate(m_lo_bits) );
 	assign m_lo_norm = m_lo_norm_32b[27:0];
 		
 	// Take the sum or difference between both mantissas
@@ -165,12 +165,13 @@ module float_adder_subtractor (
 	// Done by dropping the top two bits of the mantissa sum (implicit '01.xx', 28-bit -> 26-bit), and shifting by leading zeros.
 	// In the subnormal case, we shift by the value of e_hi instead, if e_hi is not subnormal, otherwise by +1
 	wire [22:0] m_rounded;
-	wire [31:0] m_shift_in, m_shifted_32b;
+	wire [7:0] m_shift_in;
+	wire [31:0] m_shifted_32b;
 	wire round_overflow;
 	
-	assign m_shift_in = is_subnormal ? (hi_subnormal ? 8'b1 : {24'b0, e_hi}) : {{27{1'b0}}, leading_zeros};
+	assign m_shift_in = is_subnormal ? (hi_subnormal ? 8'b1 : e_hi) : {3'b0, leading_zeros};
 	
-	left_shift_32b _normalize_m ( .in({m_sum_positive[25:0], 6'b0}), .shift(m_shift_in), .out(m_shifted_32b) );	
+	left_shift #( .BITS(32), .SHIFT_BITS(8) ) _normalize_m ( .in({m_sum_positive[25:0], 6'b0}), .shift(m_shift_in), .out(m_shifted_32b), .is_rotate(1'b0), .accumulate() );	
 
 	// Round the shifted result to 23-bit
 	// Additionally, use the m_lo_bits as a final bit input, to break ties
