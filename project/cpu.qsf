@@ -38,7 +38,7 @@
 
 set_global_assignment -name FAMILY "Cyclone III"
 set_global_assignment -name DEVICE EP3C16F484C6
-set_global_assignment -name TOP_LEVEL_ENTITY float_multiplier
+set_global_assignment -name TOP_LEVEL_ENTITY fpu
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "13.0 SP1"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "14:13:55  JANUARY 24, 2022"
 set_global_assignment -name LAST_QUARTUS_VERSION "13.0 SP1"

@@ -19,9 +19,6 @@ module float_multiplier (
 	assign sz = sa ^ sb;
 	
 	// Handle special cases of NaN, Infinity, and Zero
-	// NaN + Anything = NaN
-	// inf + inf = NaN
-	// inf + real = inf
 	always @(*) begin
 		casez ({1'b0, fa[30:0], 1'b0, fb[30:0]}) // Ignore the sign bit for now
 			// NaN * NaN = NaN
@@ -94,9 +91,8 @@ module float_multiplier (
 	// We then count the leading zeros to determine our shift and normalization
 	wire [5:0] leading_zeros;
 	wire [9:0] leading_zeros_compliment, e_sum_norm;
-	wire is_zero;
 	
-	count_leading_zeros #( .BITS(6) ) _clz ( .value({alu_product[47:0], 16'b0}), .count(leading_zeros), .zero(is_zero) );
+	count_leading_zeros #( .BITS(6) ) _clz ( .value({alu_product[47:0], 16'b0}), .count(leading_zeros), .zero() );
 	
 	// Exponent += 1 - leading_zeros
 	signed_compliment #( .BITS(10) ) _lzc ( .in({4'b0, leading_zeros}), .out(leading_zeros_compliment) );
@@ -153,8 +149,6 @@ module float_multiplier (
 			fproduct = {sz, 31'b0};
 		if (exponent_overflow) // Overflow (+inf / -inf)
 			fproduct = {sz, 31'h7f800000};
-		else if (is_zero)
-			fproduct = {sz, 31'b0};
 		else
 			fproduct = {sz, e_increment[7:0], m_rounded};
 	end

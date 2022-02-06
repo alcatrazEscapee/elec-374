@@ -54,6 +54,19 @@ def mock_xxea(name: str, prefix):
         ))
     return load, apply
 
+def mock_xxxxa(name: str, prefix):
+    line1, line2, line3, line4, actual = Lazy(), Lazy(), Lazy(), Lazy(), Lazy()
+    def load(parts):
+        line1.value, line2.value, line3.value, line4.value, actual.value = parts
+    def apply(self):
+        self.assertEqual('true', actual.value, '%s\n%s%s\n%s%s\n%s%s\n%s%s' % (name,
+            prefix[0], line1,
+            prefix[1], line2,
+            prefix[2], line3,
+            prefix[3], line4
+        ))
+    return load, apply
+
 def main():
     print('Analyzing Test Results')
     log = sys.argv[1]
@@ -82,6 +95,8 @@ def main():
                     load, test = mock_ea(name)
                 elif op in 'ij':
                     load, test = mock_xea(name, '= (int) ' if op == 'i' else '= (unsigned int) ')
+                elif op in 'r':
+                    load, test = mock_xxxxa(name, ('Input    ', 'Expected ', 'Actual   ', 'Error    '))
                 elif op in '+-*/':
                     load, test = mock_xxea(name, ('  ', op + ' ', '= '))
                 elif op in '<=>':

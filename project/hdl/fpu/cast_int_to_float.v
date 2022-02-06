@@ -25,7 +25,7 @@ module cast_int_to_float(
 	wire [22:0] mantissa;
 	wire round_overflow; // If the rounding overflowed into the leading bits, and the exponent needs to be bumped as a result.
 	
-	left_shift_32b _ls_mantissa ( .in(in_positive), .shift({27'b0, leading_zeros}), .out(shift_out) );
+	left_shift #( .BITS(32), .SHIFT_BITS(6) ) _ls_mantissa ( .in(in_positive), .shift({1'b0, leading_zeros}), .out(shift_out), .is_rotate(1'b0), .accumulate() );
 	
 	// Exclude the top bit (implicit 1.xxx), and round to the nearest even
 	round_to_nearest_even #( .BITS_IN(31), .BITS_OUT(23) ) _m_round ( .in(shift_out[30:0]), .out(mantissa), .overflow(round_overflow) );
