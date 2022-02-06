@@ -93,9 +93,7 @@ module booth_bit_pair_multiplier(
 		
 	// Level 6 (Top Level), Carry Lookahead Adder
 	
-	wire cla_c_out;
-	
-	carry_lookahead_adder #( .BITS16(4) ) _cla6 ( .a(sum5), .b({carry5[62:0], 1'b0}), .sum(product), .c_in(1'b0), .c_out(cla_c_out) );
+	carry_lookahead_adder #( .BITS16(4) ) _cla6 ( .a(sum5), .b({carry5[62:0], 1'b0}), .sum(product), .c_in(1'b0), .c_out() );
 	
 endmodule
 

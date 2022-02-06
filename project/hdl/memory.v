@@ -19,6 +19,8 @@ module memory (
 	end
 endmodule
 
+
+`timescale 1ns/100ps
 module memory_test;
 	initial begin
 		$finish;

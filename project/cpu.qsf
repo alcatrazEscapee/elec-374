@@ -62,7 +62,6 @@ set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id alu_shift_le
 set_global_assignment -name EDA_TEST_BENCH_RUN_SIM_FOR "100 ns" -section_id alu_shift_left
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME alu_shift_left_test -section_id alu_shift_left
 set_global_assignment -name EDA_TEST_BENCH_FILE alu_shift_left.v -section_id alu_shift_left
-set_global_assignment -name VERILOG_FILE hdl/adder_subtractor.v
 set_global_assignment -name VERILOG_FILE hdl/alu.v
 set_global_assignment -name VERILOG_FILE hdl/array_div.v
 set_global_assignment -name VERILOG_FILE hdl/booth_bit_pair_multiplier.v
