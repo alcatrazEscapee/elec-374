@@ -60,7 +60,7 @@ def main():
     target = '???'
     i = 0
     fpu_tests = collections.defaultdict(list)
-    cmd_replacements = {'>': 'G', '<': 'L', '=': 'E'}
+    cmd_replacements = {'>': 'G', '<': 'L', '=': 'E', '+': 'a', '-': 's', '*': 'x', '/': 'd'}
 
     with open(log, 'r', encoding='utf-8') as f:
         lines = f.read().split('\n')
@@ -82,7 +82,7 @@ def main():
                     load, test = mock_ea(name)
                 elif op in 'ij':
                     load, test = mock_xea(name, '= (int) ' if op == 'i' else '= (unsigned int) ')
-                elif op in '+-':
+                elif op in '+-*/':
                     load, test = mock_xxea(name, ('  ', op + ' ', '= '))
                 elif op in '<=>':
                     load, test = mock_xea(name, 'Compare: ')
@@ -102,9 +102,9 @@ def main():
         print('Verifying FPU Tests (%s)' % op)
         fpu_lines.append('\nRunning fpu (%s)\n' % op)
         proc_op = cmd_replacements[op] if op in cmd_replacements else op
-        proc = subprocess.Popen(('out\\fpu.o', proc_op), shell=True, encoding='utf-8',
-                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        out, err = proc.communicate('\n'.join([e0 for e in tests for e0 in e[0]]))  # Inputs are joined by newline
+        proc = subprocess.Popen(('out\\fpu.o', proc_op), shell=True, encoding='utf-8', stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        inputs = scan_for_xz(tests)
+        out, err = proc.communicate(inputs)
         fpu_lines.append(out)
 
         if err is not None:
@@ -118,6 +118,24 @@ def main():
 
     with open(log.replace('vsim', 'fpu'), 'w', encoding='utf-8') as f:
         f.writelines(fpu_lines)
+
+def scan_for_xz(tests):
+    errors = []
+    params = []
+    for test in tests:
+        for param in test[0]:
+            params.append(param)
+            if 'x' in param or 'z' in param:
+                errors.append(param)
+    if errors:
+        err = 'Invalid input values for FPU native tests.\nOffending lines:\n'
+        if len(errors) < 10:
+            err += '  ' + '\n  '.join(errors)
+        else:
+            err += '  ' + '\n  '.join(errors[:10]) + '\n... and %d more' % (len(errors) - 10)
+        raise RuntimeError(err)
+    return '\n'.join(params)
+
 
 if __name__ == '__main__':
     main()

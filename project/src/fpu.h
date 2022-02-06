@@ -11,8 +11,10 @@
 #define SIGNED '-'
 #define UNSIGNED '+'
 
-#define ADD '+'
-#define SUB '-'
+#define ADD 'a'
+#define SUB 's'
+#define MUL 'x'
+#define DIV 'd'
 
 #define GREATER_THAN 'G'
 #define LESS_THAN 'L'

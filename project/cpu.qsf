@@ -38,7 +38,7 @@
 
 set_global_assignment -name FAMILY "Cyclone III"
 set_global_assignment -name DEVICE EP3C16F484C6
-set_global_assignment -name TOP_LEVEL_ENTITY fpu
+set_global_assignment -name TOP_LEVEL_ENTITY float_multiplier
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "13.0 SP1"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "14:13:55  JANUARY 24, 2022"
 set_global_assignment -name LAST_QUARTUS_VERSION "13.0 SP1"
@@ -67,6 +67,7 @@ set_global_assignment -name VERILOG_FILE hdl/fpu/cast_int_to_float.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/count_leading_zeros.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/float_adder_subtractor.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/float_compare.v
+set_global_assignment -name VERILOG_FILE hdl/fpu/float_multiplier.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/fpu.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/greater_than_unsigned.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/round_to_nearest_even.v

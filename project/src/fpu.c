@@ -2,10 +2,15 @@
 
 
 int main(int argc, char ** argv) {
+
+    _Static_assert(sizeof(int32_t) == 4, "sizeof(int32_t) == 4");
+    _Static_assert(sizeof(uint32_t) == 4, "sizeof(uint32_t) == 4");
+    _Static_assert(sizeof(float) == 4, "sizeof(float) == 4");
+
     fesetround(FE_TONEAREST);
 
     if (argc != 2) {
-        printf("Usage: fpu [fgij+-GEL]\n");
+        printf("Usage: fpu [fgijasxdGEL]\n");
         return 1;
     }
     switch (argv[1][0]) {
@@ -13,8 +18,10 @@ int main(int argc, char ** argv) {
         case 'g': cast_int_to_float(UNSIGNED); break;
         case 'i': cast_float_to_int(); break;
         case 'j': cast_float_to_unsigned_int(); break;
-        case '+': binary_op_floats(ADD); break;
-        case '-': binary_op_floats(SUB); break;
+        case 'a': binary_op_floats(ADD); break;
+        case 's': binary_op_floats(SUB); break;
+        case 'x': binary_op_floats(MUL); break;
+        case 'd': binary_op_floats(DIV); break;
         case 'G': compare_floats(GREATER_THAN); break;
         case 'E': compare_floats(EQUALS); break;
         case 'L': compare_floats(LESS_THAN); break;
@@ -101,6 +108,8 @@ void binary_op_floats(char op) {
         float f = 
             op == ADD ? FLOAT(i) + FLOAT(j) :
             op == SUB ? FLOAT(i) - FLOAT(j) :
+            op == MUL ? FLOAT(i) * FLOAT(j) :
+            op == DIV ? FLOAT(i) / FLOAT(j) :
             0;
         print_float(FLOAT(i), '|');
         print_float(FLOAT(j), '|');
