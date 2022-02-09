@@ -14,5 +14,6 @@
 !/project/test/*.mem
 !/project/cpu.qpf
 !/project/cpu.qsf
+!/project/cpu.sdc
 
 __pycache__
