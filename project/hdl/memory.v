@@ -1,22 +1,24 @@
-module memory (
-	input [8:0] address,
-	input [31:0] data_in,
-	output reg [31:0] data_out,
-	input write_enable,
-	input read_clk,
-	input write_clk
+module memory #(
+	parameter BITS = 32,
+	parameter WORDS = 16,
+	parameter ADDRESS_BITS = $clog2(WORDS)
+) (
+	input [ADDRESS_BITS - 1:0] address,
+	input [BITS - 1:0] data_in,
+	output reg [BITS - 1:0] data_out,
+	
+	input en,
+	input clk
 );
 	// Inferred by Quartus into built in memory
-	reg [31:0] data [511:0];
+	// Includes a register buffered output, so no MD register is required
+	reg [BITS - 1:0] data [WORDS - 1:0];
 	
-	always @(posedge write_clk) begin
-		if (write_enable)
+	always @(posedge clk) begin
+		if (en)
 			data[address] <= data_in;
-	end
-	
-	always @(posedge read_clk) begin
 		data_out <= data[address];
-	end
+	end	
 endmodule
 
 

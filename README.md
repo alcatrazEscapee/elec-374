@@ -46,9 +46,9 @@ Index | Opcode | Name | Assembly | RTN
 15 | `01111` | Divide | `div rB, rC` | `HI, LO <- rB / rC`
 16 | `10000` | Negate | `neg rA, rB` | `rA <- -rB`
 17 | `10001` | Not | `not rA, rB` | `rA <- ~rB`
-18 | `10010` | Conditional Branch | `br<condition> rA, C` | `if condition(rA), PC <- PC - 4 + C`
+18 | `10010` | Conditional Branch | `br<condition> rA, C` | `if condition(rA), PC <- PC - 1 + C`
 19 | `10011` | Jump (Return) | `jr` | `PC <- r15`
-20 | `10100` | Jump and Link (Call) | `jal rA` | `r15 <- PC - 4, PC <- rA`
+20 | `10100` | Jump and Link (Call) | `jal rA` | `r15 <- PC - 1, PC <- rA`
 21 | `10101` | Input | `in rA` | `rA <- Input`
 22 | `10110` | Output | `out rA` | `Output <- rA`
 23 | `10111` | Move from HI | `mfhi rA` | `rA <- HI`
@@ -105,9 +105,9 @@ Floating point operations use the `FPU Opcode` to determine their actual operati
 
 #### Instruction Fetch (Common to all instructions):
 
-- T0 `PC <- PC + 4`, `MA <- PC`
-- T1 `MD <- Memory[MA]`
-- T2 `IR <- MD`
+- T0 `PC <- PC + 1`, `MA <- PC`
+- T1 Memory Read
+- T2 `IR <- Memory[MA]`
 
 Three Register (`add`, `sub`, `shr`, `shl`, `ror`, `rol`, `and`, `or`): `op rX, rY, rZ`
 
@@ -136,17 +136,17 @@ Two Register Immediate (`ldi`, `addi`, `andi`, `ori`): `op rX, rY, C`
 Load: `ld rX, C(rY)`
 
 - T3 `MA <- rY + C`
-- T4 `MD <- Memory[MA]`
-- T5 `rX <- MD`
+- T4 Memory Read
+- T5 `rX <- Memory[MA]`
 
 Store: `st rX, C(rY)`
 
 - T3 `MA <- rY + C`
-- T4 `Memory[MA] <- MD`
+- T4 `Memory[MA] <- rX`, Memory Write
 
 Conditional Branch: `br<condition> rX, C`
 
-- T3 `if condition(rX) PC <- PC - 4 + C`
+- T3 `if condition(rX) PC <- PC - 1 + C`
 
 Jump (Return): `jr`
 
@@ -154,7 +154,7 @@ Jump (Return): `jr`
 
 Jump And Link (Call): `jal rX`
 
-- T3 `r15 <- PC + 4`, `PC <- rX`
+- T3 `r15 <- PC + 1`, `PC <- rX`
 
 
 ### Testing
@@ -182,5 +182,10 @@ Running:
 
 - [HDL Bits - Verilog Practice](https://hdlbits.01xz.net/wiki/Main_Page)
 - [Quartus II Testbench Tutorial](https://class.ece.uw.edu/271/peckol/doc/DE1-SoC-Board-Tutorials/ModelsimTutorials/QuartusII-Testbench-Tutorial.pdf)
-  - [More Advanced Testbench Tutorial, in Verilog](http://www-classes.usc.edu/engr/ee-s/254/ee254l_lab_manual/Testbenches/handout_files/ee254_testbench.pdf)
+- [More Advanced Testbench Tutorial, in Verilog](http://www-classes.usc.edu/engr/ee-s/254/ee254l_lab_manual/Testbenches/handout_files/ee254_testbench.pdf)
 - [HDL Testing on Github Actions](https://purisa.me/blog/testing-hdl-on-github/)
+- [Altera TimeQuest Timing Analyzer - Quick Start Tutorial](https://www.intel.com/content/dam/www/programmable/us/en/pdfs/literature/hb/qts/ug_tq_tutorial.pdf)
+- [Altera Best Practices for the Quartus II TimeQuest Timing Analyzer](https://www.intel.com/content/dam/www/programmable/us/en/pdfs/literature/hb/qts/qts_qii53024.pdf)
+- [754-2019 - IEEE Standard for Floating-Point Arithmetic](https://ieeexplore.ieee.org/document/8766229)
+- [IEEE - An Effective Floating-Point Reciprocal](https://ieeexplore.ieee.org/document/8525803)
+- [ISO/IEC 9899:201x - C Programming Language Standard](http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1548.pdf)
