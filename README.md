@@ -30,7 +30,7 @@ Index | Opcode | Name | Assembly | RTN
 ---|---|---|---|---
 0 | `00000` | Load | `ld rA, C(rB)` | `rA <- Memory[rB + C]`
 1 | `00001` | Load Immediate | `ldi rA, C(rB)` | `rA <- rB + C`
-2 | `00010` | Store | `st C, rA` | `Memory[rB + C] <- rA`
+2 | `00010` | Store | `st rA, C(rB)` | `Memory[rB + C] <- rA`
 3 | `00011` | Add | `add rA, rB, rC` | `rA <- rB + rC`
 4 | `00100` | Subtract | `sub rA, rB, rC` | `rA <- rB - rC`
 5 | `00101` | Shift Right | `shr rA, rB, rC` | `rA <- rB >> rC`
@@ -46,9 +46,9 @@ Index | Opcode | Name | Assembly | RTN
 15 | `01111` | Divide | `div rB, rC` | `HI, LO <- rB / rC`
 16 | `10000` | Negate | `neg rA, rB` | `rA <- -rB`
 17 | `10001` | Not | `not rA, rB` | `rA <- ~rB`
-18 | `10010` | Conditional Branch | `br<condition> rA, C` | `if condition(rA), PC <- PC - 1 + C`
-19 | `10011` | Jump (Return) | `jr` | `PC <- r15`
-20 | `10100` | Jump and Link (Call) | `jal rA` | `r15 <- PC - 1, PC <- rA`
+18 | `10010` | Conditional Branch | `br<condition> rA, C` | `if condition(rA), PC <- PC + C`
+19 | `10011` | Jump (Return) | `jr rA` | `PC <- rA`
+20 | `10100` | Jump and Link (Call) | `jal rA` | `r15 <- PC + 1, PC <- rA`
 21 | `10101` | Input | `in rA` | `rA <- Input`
 22 | `10110` | Output | `out rA` | `Output <- rA`
 23 | `10111` | Move from HI | `mfhi rA` | `rA <- HI`

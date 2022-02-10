@@ -9,9 +9,10 @@
 !/docs/**/*.pdf
 
 !/project/Makefile
+!/project/asm/**/*.s
+!/project/assembler/main.py
 !/project/hdl/**/*.v
 !/project/test/setup.py
-!/project/test/*.mem
 !/project/cpu.qpf
 !/project/cpu.qsf
 !/project/cpu.sdc
