@@ -1,14 +1,14 @@
-module fpu (
-	// RF Inputs
-	input [31:0] ra,
-	input [31:0] rb,
-	// FF Inputs
-	input [31:0] fa,
-	input [31:0] fb,
-	// Generic Output
-	output reg [31:0] z,
+module fpu (	
+	// CPU Control Signals
+	input [3:0] rf_a_addr,
+	input [3:0] rf_b_addr,
+	input [3:0] rf_z_addr,
 	
-	// Control Signals
+	// RF Interface
+	input [31:0] ra, // To FPU
+	output [31:0] rz, // To RF
+	
+	// FPU Control Signals
 	input [11:0] select, // {fpu_feq, fpu_fgt, fpu_frc, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf, fpu_mvfr, fpu_mvrf}
 	output illegal,
 
@@ -22,7 +22,6 @@ module fpu (
 	input clk,
 	input clr
 );
-
 	// FPU Operations
 	// 0 = mvrf = Move from Register to Float
 	// 1 = mvfr = Move from Float to Register
@@ -42,6 +41,28 @@ module fpu (
 	
 	assign {fpu_feq, fpu_fgt, fpu_frc, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf, fpu_mvfr, fpu_mvrf} = select;
 	assign illegal = illegal_cfr;
+	
+	wire [31:0] fa, fb;
+	reg [31:0] z;
+
+	// FPU Register File (FF)
+	wire fpu_rf_en;
+	reg frc_write;
+	
+	assign fpu_rf_en = frc_write | fpu_frc | fpu_fmul | fpu_fsub | fpu_fadd | fpu_curf | fpu_crf | fpu_mvrf;
+	assign rz = z;
+	
+	// FPU Register File
+	register_file #( .WORDS(16), .BITS(32) ) _ff (
+		.data_in(z),
+		.addr_in(fpu_rf_en ? rf_z_addr : 4'b0),
+		.addr_a(rf_a_addr),
+		.addr_b(rf_b_addr),
+		.data_a(fa),
+		.data_b(fb),
+		.clk(clk),
+		.clr(clr)
+	);
 	
 	// Internal control signals and wires
 	reg x_en, y_en, r_en, t0_en, t1_en;
@@ -152,6 +173,8 @@ module fpu (
 		
 		fmul_a_in = fa;
 		fmul_b_in = fb;
+		
+		frc_write = 1'b0;
 	
 		case (counter_out)
 			4'h0 :
@@ -212,6 +235,7 @@ module fpu (
 			4'h7 :
 				begin
 					// Output
+					frc_write = 1'b1;
 				end
 		endcase
 	end

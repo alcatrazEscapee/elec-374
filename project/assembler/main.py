@@ -31,7 +31,7 @@ def main():
                 pass
             elif token == '//':
                 break  # comment
-            elif token in INSTRUCTIONS:
+            elif token in INSTRUCTIONS or token in FPU_INSTRUCTIONS:
                 try:
                     if token in ('add', 'sub', 'shr', 'shl', 'ror', 'rol', 'and', 'or'):
                         ra, rb, rc, *_ = tokens
@@ -53,6 +53,12 @@ def main():
                         inst = register(ra, 23)
                     elif token in ('noop', 'halt'):
                         inst = 0
+                    elif token in ('fadd', 'fsub', 'fmul', 'frc', 'fgt', 'feq'):
+                        ra, rb, rc, *_ = tokens
+                        inst = register(ra, 23) | register(rb, 19) | register(rc, 15)
+                    elif token in ('mvrf', 'mvfr', 'crf', 'cfr', 'curf', 'cufr'):
+                        ra, rb, *_ = tokens
+                        inst = register(ra, 23) | register(rb, 19)
                     else:
                         raise NotImplementedError('Fixme, line %d:\n%s' % (1 + line_no, line))
                 except Exception as err:
@@ -73,15 +79,20 @@ def main():
 
 
 def constant(x: str) -> int:
-    return int(x) & ((1 << 19) - 1)
+    return eval(x) & ((1 << 19) - 1)
 
 def opcode(x: str) -> int:
-    return INSTRUCTIONS.index(x) << 27
+    if x in INSTRUCTIONS:
+        return INSTRUCTIONS.index(x) << 27
+    if x in FPU_INSTRUCTIONS:
+        return (FPU_OPCODE << 27) | FPU_INSTRUCTIONS.index(x)
 
 def register(x: str, offset: int = 0) -> int:
-        return int(re.search('r([0-9]{1,2})', x).group(1)) << offset
+        return int(re.search('[rf]([0-9]{1,2})', x).group(1)) << offset
 
 INSTRUCTIONS = ['ld', 'ldi', 'st', 'add', 'sub', 'shr', 'shl', 'ror', 'rol', 'and', 'or', 'addi', 'andi', 'ori', 'mul', 'div', 'neg', 'not']
+FPU_INSTRUCTIONS = ['mvrf', 'mvfr', 'crf', 'cfr', 'curf', 'cufr', 'fadd', 'fsub', 'fmul', 'frc', 'fgt', 'feq']
+FPU_OPCODE = 27
 
 if __name__ == '__main__':
     main()

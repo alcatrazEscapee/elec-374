@@ -9,10 +9,12 @@ module cpu (
 	input alu_b_in_rf, input alu_b_in_constant,
 	input lo_en,
 	input hi_en,
-	input rf_in_alu, input rf_in_hi, input rf_in_lo, input rf_in_memory,
+	input rf_in_alu, input rf_in_hi, input rf_in_lo, input rf_in_memory, input rf_in_fpu,
 	input memory_en,
 
 	input [11:0] alu_select,
+	input [11:0] fpu_select,
+	input fpu_mode, // 0 = ALU, 1 = FPU
 	
 	// To Control Logic
 	output [31:0] ir_out,
@@ -26,7 +28,7 @@ module cpu (
 	// Based on the 3-Bus Architecture
 	// We can exclude the A, B, Y and Z registers
 	// Memory has a built-in MD register (in inferred Quartus memory), so we exclude that as well
-	wire [31:0] pc_out, ma_out, hi_out, lo_out, rf_a_out, rf_b_out, alu_z_out, alu_lo_out, alu_hi_out, constant_c;
+	wire [31:0] pc_out, ma_out, hi_out, lo_out, rf_a_out, rf_b_out, alu_z_out, alu_lo_out, alu_hi_out, constant_c, fpu_bridge_alu_a, fpu_bridge_alu_b, fpu_rz_out;
 	reg [31:0] pc_in, ma_in, alu_a_in, alu_b_in, rf_in;
 	
 	wire pc_en, ma_en, rf_en;
@@ -102,33 +104,36 @@ module cpu (
 	end
 		
 	// ALU Inputs
-	// Left input can be PC or rY
-	// Right input can be rX or constant C
+	// Left input can be PC, rY, or driven by FPU
+	// Right input can be rX, constant C, or driven by FPU
 	// Control Signals: alu_a_in_rf, alu_a_in_pc, alu_b_in_rf, alu_b_in_constant
 	always @(*) begin
-		case ({alu_a_in_rf, alu_a_in_pc})
-			2'b01 : alu_a_in <= pc_out;
-			2'b10 : alu_a_in <= rf_a_out;
+		case ({fpu_mode, alu_a_in_rf, alu_a_in_pc})
+			3'b001 : alu_a_in <= pc_out;
+			3'b010 : alu_a_in <= rf_a_out;
+			3'b100 : alu_a_in <= fpu_bridge_alu_a;
 			default : alu_a_in <= 32'b0;
 		endcase
 		
-		case ({alu_b_in_rf, alu_b_in_constant})
-			2'b01 : alu_b_in <= constant_c;
-			2'b10 : alu_b_in <= rf_b_out;
+		case ({fpu_mode, alu_b_in_rf, alu_b_in_constant})
+			3'b001 : alu_b_in <= constant_c;
+			3'b010 : alu_b_in <= rf_b_out;
+			3'b100 : alu_b_in <= fpu_bridge_alu_b;
 			default : alu_b_in <= 32'b0;
 		endcase
 	end
 	
 	// RF Inputs
-	// Input can by any of ALU Z, HI, LO, Memory
-	assign rf_en = rf_in_alu | rf_in_hi | rf_in_lo | rf_in_memory;
+	// Input can by any of ALU Z, HI, LO, Memory, or FPU
+	assign rf_en = rf_in_alu | rf_in_hi | rf_in_lo | rf_in_memory | rf_in_fpu;
 	
 	always @(*) begin
-		case ({rf_in_alu, rf_in_hi, rf_in_lo, rf_in_memory})
-			4'b0001 : rf_in <= memory_out;
-			4'b0010 : rf_in <= lo_out;
-			4'b0100 : rf_in <= hi_out;
-			4'b1000 : rf_in <= alu_z_out;
+		case ({rf_in_fpu, rf_in_alu, rf_in_hi, rf_in_lo, rf_in_memory})
+			5'b00001 : rf_in <= memory_out;
+			5'b00010 : rf_in <= lo_out;
+			5'b00100 : rf_in <= hi_out;
+			5'b01000 : rf_in <= alu_z_out;
+			5'b10000 : rf_in <= fpu_rz_out;
 			default : rf_in <= 32'b0;
 		endcase
 	end
@@ -140,7 +145,26 @@ module cpu (
 		.addr_b(rf_b_addr),
 		.data_a(rf_a_out),
 		.data_b(rf_b_out),
-		.clk(clk)
+		.clk(clk),
+		.clr(clr)
+	);
+	
+	// Floating Point Unit
+	// Isolated from the rest of the processor as much as possible
+	fpu _fpu (
+		.rf_a_addr(rf_a_addr),
+		.rf_b_addr(rf_b_addr),
+		.rf_z_addr(rf_z_addr),
+		.ra(rf_a_out),
+		.rz(fpu_rz_out),
+		.select(fpu_select),
+		.illegal(),
+		.alu_a(fpu_bridge_alu_a),
+		.alu_b(fpu_bridge_alu_b),
+		.alu_hi(alu_hi_out),
+		.alu_lo(alu_lo_out),
+		.clk(clk),
+		.clr(clr)
 	);
 	
 	register _pc ( .q(pc_in),      .d(pc_out), .en(pc_en), .clk(clk), .clr(clr) );
@@ -152,7 +176,7 @@ module cpu (
 	alu _alu ( .a(alu_a_in), .b(alu_b_in), .z(alu_z_out), .hi(alu_hi_out), .lo(alu_lo_out), .select(alu_select) );
 	
 	memory #( .BITS(32), .WORDS(512) ) _memory (
-		.address(ma_out),
+		.address(ma_out[8:0]),
 		.data_in(rf_b_out), // Data to Memory = RF B Out
 		.data_out(memory_out),
 		.en(memory_en),
@@ -193,8 +217,9 @@ module cpu_test;
 		.alu_a_in_rf(alu_a_in_rf), .alu_a_in_pc(alu_a_in_pc),
 		.alu_b_in_rf(alu_b_in_rf), .alu_b_in_constant(alu_b_in_constant),
 		.lo_en(lo_en), .hi_en(hi_en),
-		.rf_in_alu(rf_in_alu), .rf_in_hi(rf_in_hi), .rf_in_lo(rf_in_lo), .rf_in_memory(rf_in_memory),
+		.rf_in_alu(rf_in_alu), .rf_in_hi(rf_in_hi), .rf_in_lo(rf_in_lo), .rf_in_memory(rf_in_memory), .rf_in_fpu(1'b0),
 		.alu_select({alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add}),
+		.fpu_select(12'b0), .fpu_mode(1'b0), // Disable FPU
 		.ir_out(ir_out), .clk(clk), .clr(clr),
 		.memory_en(memory_en),
 		.branch_condition(branch_condition)

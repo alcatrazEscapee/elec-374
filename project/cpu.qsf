@@ -72,6 +72,7 @@ set_global_assignment -name VERILOG_FILE hdl/fpu/float_multiplier.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/fpu.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/greater_than_unsigned.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/round_to_nearest_even.v
+set_global_assignment -name VERILOG_FILE hdl/test/cpu_fpu.v
 set_global_assignment -name VERILOG_FILE hdl/alu.v
 set_global_assignment -name VERILOG_FILE hdl/array_div.v
 set_global_assignment -name VERILOG_FILE hdl/booth_bit_pair_multiplier.v
