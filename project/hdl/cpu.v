@@ -1,15 +1,16 @@
 module cpu (
 	// Control Signals
+	// foo_en = Enable signal for writing to foo
+	// foo_in_bar = Enable signal for writing foo <= bar
 	input ir_en,
 	input pc_increment, input pc_in_alu, input pc_in_rf_a,
 	input ma_in_pc, input ma_in_alu,
-	input md_in_memory, input md_in_rf_b,
 	input alu_a_in_rf, input alu_a_in_pc,
 	input alu_b_in_rf, input alu_b_in_constant,
 	input lo_en,
 	input hi_en,
-	input rf_in_alu, input rf_in_hi, input rf_in_lo, input rf_in_md,
-	input mem_write,
+	input rf_in_alu, input rf_in_hi, input rf_in_lo, input rf_in_memory,
+	input memory_en,
 
 	input [11:0] alu_select,
 	
@@ -24,12 +25,14 @@ module cpu (
 
 	// Based on the 3-Bus Architecture
 	// We can exclude the A, B, Y and Z registers
-	wire [31:0] pc_out, ma_out, md_out, hi_out, lo_out, rf_a_out, rf_b_out, alu_z_out, alu_lo_out, alu_hi_out, constant_c;
-	reg [31:0] pc_in, ma_in, md_in, alu_a_in, alu_b_in, rf_in;
-	wire pc_en, ma_en, md_en, rf_en;
+	// Memory has a built-in MD register (in inferred Quartus memory), so we exclude that as well
+	wire [31:0] pc_out, ma_out, hi_out, lo_out, rf_a_out, rf_b_out, alu_z_out, alu_lo_out, alu_hi_out, constant_c;
+	reg [31:0] pc_in, ma_in, alu_a_in, alu_b_in, rf_in;
+	
+	wire pc_en, ma_en, rf_en;
 	
 	// Memory Interface
-	wire [31:0] mem_out;
+	wire [31:0] memory_out, memory_in;
 	
 	// Register File
 	wire [3:0] rf_a_addr, rf_b_addr, rf_z_addr;
@@ -38,11 +41,11 @@ module cpu (
 	
 	// PC Increment Logic
 	// Control Signals: pc_increment, pc_in_alu, pc_in_rf_a
-	// Inputs: PC + 4, PC + C, rX
-	wire [31:0] pc_plus_4;
+	// Inputs: PC + 1, PC + C, rX
+	wire [31:0] pc_plus_1;
 	wire pc_cout;
 	
-	ripple_carry_adder _pc_adder ( .a(pc_out), .b(32'b100), .sum(pc_plus_4), .c_in(1'b0), .c_out(pc_cout) ); // PC + 4
+	ripple_carry_adder _pc_adder ( .a(pc_out), .b(32'b1), .sum(pc_plus_1), .c_in(1'b0), .c_out(pc_cout) ); // PC + 1
 	
 	assign pc_en = pc_increment | pc_in_alu | pc_in_rf_a;
 	
@@ -50,7 +53,7 @@ module cpu (
 		case ({pc_increment, pc_in_alu, pc_in_rf_a})
 			3'b001 : pc_in <= rf_a_out;
 			3'b010 : pc_in <= alu_z_out;
-			3'b100 : pc_in <= pc_plus_4;
+			3'b100 : pc_in <= pc_plus_1;
 			default : pc_in <= 32'b0;
 		endcase
 	end
@@ -97,20 +100,7 @@ module cpu (
 			default : ma_in <= 32'b0;
 		endcase
 	end
-	
-	// MD Register
-	// Control Signals: md_in_memory, md_in_rf_b
-	// Inputs: Memory[MA], rX
-	assign md_en = md_in_memory | md_in_rf_b;
-	
-	always @(*) begin
-		case ({md_in_memory, md_in_rf_b})
-			2'b01 : md_in <= rf_b_out;
-			2'b10 : md_in <= mem_out;
-			default : md_in <= 32'b0;
-		endcase
-	end
-	
+		
 	// ALU Inputs
 	// Left input can be PC or rY
 	// Right input can be rX or constant C
@@ -130,12 +120,12 @@ module cpu (
 	end
 	
 	// RF Inputs
-	// Input can by any of ALU Z, HI, LO, MD	
-	assign rf_en = rf_in_alu | rf_in_hi | rf_in_lo | rf_in_md;
+	// Input can by any of ALU Z, HI, LO, Memory
+	assign rf_en = rf_in_alu | rf_in_hi | rf_in_lo | rf_in_memory;
 	
 	always @(*) begin
-		case ({rf_in_alu, rf_in_hi, rf_in_lo, rf_in_md})
-			4'b0001 : rf_in <= md_out;
+		case ({rf_in_alu, rf_in_hi, rf_in_lo, rf_in_memory})
+			4'b0001 : rf_in <= memory_out;
 			4'b0010 : rf_in <= lo_out;
 			4'b0100 : rf_in <= hi_out;
 			4'b1000 : rf_in <= alu_z_out;
@@ -143,27 +133,31 @@ module cpu (
 		endcase
 	end
 	
-	register_file _rf (
-		.write_data(rf_in),
-		.write_addr(rf_en ? rf_z_addr : 4'b0), // When not enabled, writes go to r0 (noop)
-		.read_addr_a(rf_a_addr),
-		.read_addr_b(rf_b_addr),
+	register_file #( .BITS(32), .WORDS(16) ) _rf (
+		.data_in(rf_in),
+		.addr_in(rf_en ? rf_z_addr : 4'b0), // R0 has a no-op write
+		.addr_a(rf_a_addr),
+		.addr_b(rf_b_addr),
 		.data_a(rf_a_out),
 		.data_b(rf_b_out),
-		.clk(clk),
-		.clr(clr)
+		.clk(clk)
 	);
 	
 	register _pc ( .q(pc_in),      .d(pc_out), .en(pc_en), .clk(clk), .clr(clr) );
-	register _ir ( .q(md_out),     .d(ir_out), .en(ir_en), .clk(clk), .clr(clr) ); // IR in = MDR out
+	register _ir ( .q(memory_out), .d(ir_out), .en(ir_en), .clk(clk), .clr(clr) ); // IR in = Memory
 	register _ma ( .q(ma_in),      .d(ma_out), .en(ma_en), .clk(clk), .clr(clr) );
-	register _md ( .q(md_in),      .d(md_out), .en(md_en), .clk(clk), .clr(clr) );
 	register _hi ( .q(alu_hi_out), .d(hi_out), .en(hi_en), .clk(clk), .clr(clr) ); // HI and LO in = ALU out
 	register _lo ( .q(alu_lo_out), .d(lo_out), .en(lo_en), .clk(clk), .clr(clr) );
 	
 	alu _alu ( .a(alu_a_in), .b(alu_b_in), .z(alu_z_out), .hi(alu_hi_out), .lo(alu_lo_out), .select(alu_select) );
 	
-	memory _memory ( .address(ma_out[10:2]), .data_in(md_out), .data_out(mem_out), .write_enable(mem_write), .write_clk(clk), .read_clk(~clk) );
+	memory #( .BITS(32), .WORDS(512) ) _memory (
+		.address(ma_out),
+		.data_in(rf_b_out), // Data to Memory = RF B Out
+		.data_out(memory_out),
+		.en(memory_en),
+		.clk(clk)
+	);
 	
 endmodule
 
@@ -179,14 +173,16 @@ module cpu_test;
 	reg ir_en;
 	reg pc_increment, pc_in_alu, pc_in_rf_a;
 	reg ma_in_pc, ma_in_alu;
-	reg md_in_memory, md_in_rf_b;
 	reg alu_a_in_rf, alu_a_in_pc;
 	reg alu_b_in_rf, alu_b_in_constant;
 	reg lo_en, hi_en;
-	reg rf_in_alu, rf_in_hi, rf_in_lo, rf_in_md;
+	reg rf_in_alu, rf_in_hi, rf_in_lo, rf_in_memory;
+	reg memory_en;
 		
 	reg alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add;
+	
 	wire [31:0] ir_out;
+	wire branch_condition;
 	
 	reg clk, clr;
 	
@@ -194,13 +190,14 @@ module cpu_test;
 		.ir_en(ir_en),
 		.pc_increment(pc_increment), .pc_in_alu(pc_in_alu), .pc_in_rf_a(pc_in_rf_a),
 		.ma_in_pc(ma_in_pc), .ma_in_alu(ma_in_alu),
-		.md_in_memory(md_in_memory), .md_in_rf_b(md_in_rf_b),
 		.alu_a_in_rf(alu_a_in_rf), .alu_a_in_pc(alu_a_in_pc),
 		.alu_b_in_rf(alu_b_in_rf), .alu_b_in_constant(alu_b_in_constant),
 		.lo_en(lo_en), .hi_en(hi_en),
-		.rf_in_alu(rf_in_alu), .rf_in_hi(rf_in_hi), .rf_in_lo(rf_in_lo), .rf_in_md(rf_in_md),
+		.rf_in_alu(rf_in_alu), .rf_in_hi(rf_in_hi), .rf_in_lo(rf_in_lo), .rf_in_memory(rf_in_memory),
 		.alu_select({alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add}),
-		.ir_out(ir_out), .clk(clk), .clr(clr)
+		.ir_out(ir_out), .clk(clk), .clr(clr),
+		.memory_en(memory_en),
+		.branch_condition(branch_condition)
 	);
 	
 	task control_reset();
@@ -209,11 +206,11 @@ module cpu_test;
 			ir_en <= 1'b0;
 			pc_increment <= 1'b0; pc_in_alu <= 1'b0; pc_in_rf_a <= 1'b0;
 			ma_in_pc <= 1'b0; ma_in_alu <= 1'b0;
-			md_in_memory <= 1'b0; md_in_rf_b <= 1'b0;
 			alu_a_in_rf <= 1'b0; alu_a_in_pc <= 1'b0;
 			alu_b_in_rf <= 1'b0; alu_b_in_constant <= 1'b0;
 			lo_en <= 1'b0; hi_en <= 1'b0;
-			rf_in_alu <= 1'b0; rf_in_hi <= 1'b0; rf_in_lo <= 1'b0; rf_in_md <= 1'b0;
+			rf_in_alu <= 1'b0; rf_in_hi <= 1'b0; rf_in_lo <= 1'b0; rf_in_memory <= 1'b0;
+			memory_en <= 1'b0;
 			{alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add} <= 12'b0;
 		end
 	endtask
@@ -236,18 +233,18 @@ module cpu_test;
 		
 		// Initialize Memory
 		$display("Initializing Memory");
-		$readmemh("test/memory.mem", _dp._memory.data);
+		$readmemh("out/cpu_testbench.mem", _dp._memory.data);
 		
 		// Initialize RF via two addi instructions
 		// addi r2, r0, 53
 		
 		// T0
 		pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-		#10 $display("Test | addi r2 r0 53 @ T0 | pc=4, ma=0 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		#10 $display("Test | addi r2 r0 53 @ T0 | pc=1, ma=0 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		control_reset(); md_in_memory <= 1'b1;
-		#10 $display("Test | addi r2 r0 53 @ T1 | md=0x59000035 | md=0x%h", _dp._md.d);
+		control_reset();
+		#10 $display("Test | addi r2 r0 53 @ T1 | md=0x59000035 | md=0x%h", _dp._memory.data_out);
 		
 		// T2
 		control_reset(); ir_en <= 1'b1;
@@ -261,11 +258,10 @@ module cpu_test;
 		
 		// T0
 		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-		#10 $display("Test | addi r4 r0 28 @ T0 | pc=8, ma=4 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		#10 $display("Test | addi r4 r0 28 @ T0 | pc=2, ma=1 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
-		// T1
-		control_reset(); md_in_memory <= 1'b1;
-		#10 $display("Test | addi r4 r0 28 @ T1 | md=0x5a00001c | md=0x%h", _dp._md.d);
+		control_reset();
+		#10 $display("Test | addi r4 r0 28 @ T1 | md=0x5a00001c | md=0x%h", _dp._memory.data_out);
 		
 		// T2
 		control_reset(); ir_en <= 1'b1;
@@ -279,11 +275,11 @@ module cpu_test;
 		
 		// T0
 		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-		#10 $display("Test | and r5 r2 r4 @ T0 | pc=12, ma=8 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		#10 $display("Test | and r5 r2 r4 @ T0 | pc=3, ma=2 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		control_reset(); md_in_memory <= 1'b1;
-		#10 $display("Test | and r5 r2 r4 @ T1 | md=0x4a920000 | md=0x%h", _dp._md.d);
+		control_reset();
+		#10 $display("Test | and r5 r2 r4 @ T1 | md=0x4a920000 | md=0x%h", _dp._memory.data_out);
 		
 		// T2
 		control_reset(); ir_en <= 1'b1;
@@ -297,11 +293,11 @@ module cpu_test;
 		
 		// T0
 		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-		#10 $display("Test | or r5 r2 r4 @ T0 | pc=16, ma=12 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		#10 $display("Test | or r5 r2 r4 @ T0 | pc=4, ma=3 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		control_reset(); md_in_memory <= 1'b1;
-		#10 $display("Test | or r5 r2 r4 @ T1 | md=0x52920000 | md=0x%h", _dp._md.d);
+		control_reset();
+		#10 $display("Test | or r5 r2 r4 @ T1 | md=0x52920000 | md=0x%h", _dp._memory.data_out);
 		
 		// T2
 		control_reset(); ir_en <= 1'b1;
@@ -315,11 +311,11 @@ module cpu_test;
 		
 		// T0
 		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-		#10 $display("Test | add r5 r2 r4 @ T0 | pc=20, ma=16 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		#10 $display("Test | add r5 r2 r4 @ T0 | pc=5, ma=4 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		control_reset(); md_in_memory <= 1'b1;
-		#10 $display("Test | add r5 r2 r4 @ T1 | md=0x1a920000 | md=0x%h", _dp._md.d);
+		control_reset();
+		#10 $display("Test | add r5 r2 r4 @ T1 | md=0x1a920000 | md=0x%h", _dp._memory.data_out);
 		
 		// T2
 		control_reset(); ir_en <= 1'b1;
@@ -333,11 +329,11 @@ module cpu_test;
 		
 		// T0
 		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-		#10 $display("Test | sub r5 r2 r4 @ T0 | pc=24, ma=20 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		#10 $display("Test | sub r5 r2 r4 @ T0 | pc=6, ma=5 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		control_reset(); md_in_memory <= 1'b1;
-		#10 $display("Test | sub r5 r2 r4 @ T1 | md=0x22920000 | md=0x%h", _dp._md.d);
+		control_reset();
+		#10 $display("Test | sub r5 r2 r4 @ T1 | md=0x22920000 | md=0x%h", _dp._memory.data_out);
 		
 		// T2
 		control_reset(); ir_en <= 1'b1;
@@ -351,11 +347,11 @@ module cpu_test;
 		
 		// T0
 		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-		#10 $display("Test | shr r5 r2 r4 @ T0 | pc=28, ma=24 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		#10 $display("Test | shr r5 r2 r4 @ T0 | pc=7, ma=6 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		control_reset(); md_in_memory <= 1'b1;
-		#10 $display("Test | shr r5 r2 r4 @ T1 | md=0x2a920000 | md=0x%h", _dp._md.d);
+		control_reset();
+		#10 $display("Test | shr r5 r2 r4 @ T1 | md=0x2a920000 | md=0x%h", _dp._memory.data_out);
 		
 		// T2
 		control_reset(); ir_en <= 1'b1;
@@ -370,11 +366,11 @@ module cpu_test;
 		
 		// T0
 		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-		#10 $display("Test | shl r5 r2 r4 @ T0 | pc=32, ma=28 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		#10 $display("Test | shl r5 r2 r4 @ T0 | pc=8, ma=7 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		control_reset(); md_in_memory <= 1'b1;
-		#10 $display("Test | shl r5 r2 r4 @ T1 | md=0x32920000 | md=0x%h", _dp._md.d);
+		control_reset();
+		#10 $display("Test | shl r5 r2 r4 @ T1 | md=0x32920000 | md=0x%h", _dp._memory.data_out);
 		
 		// T2
 		control_reset(); ir_en <= 1'b1;
@@ -388,11 +384,11 @@ module cpu_test;
 		
 		// T0
 		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-		#10 $display("Test | ror r5 r2 r4 @ T0 | pc=36, ma=32 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		#10 $display("Test | ror r5 r2 r4 @ T0 | pc=9, ma=8 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		control_reset(); md_in_memory <= 1'b1;
-		#10 $display("Test | ror r5 r2 r4 @ T1 | md=0x3a920000 | md=0x%h", _dp._md.d);
+		control_reset();
+		#10 $display("Test | ror r5 r2 r4 @ T1 | md=0x3a920000 | md=0x%h", _dp._memory.data_out);
 		
 		// T2
 		control_reset(); ir_en <= 1'b1;
@@ -406,11 +402,11 @@ module cpu_test;
 		
 		// T0
 		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-		#10 $display("Test | rol r5 r2 r4 @ T0 | pc=40, ma=36 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		#10 $display("Test | rol r5 r2 r4 @ T0 | pc=10, ma=9 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		control_reset(); md_in_memory <= 1'b1;
-		#10 $display("Test | rol r5 r2 r4 @ T1 | md=0x42920000 | md=0x%h", _dp._md.d);
+		control_reset();
+		#10 $display("Test | rol r5 r2 r4 @ T1 | md=0x42920000 | md=0x%h", _dp._memory.data_out);
 		
 		// T2
 		control_reset(); ir_en <= 1'b1;
@@ -425,11 +421,11 @@ module cpu_test;
 		
 		// T0
 		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-		#10 $display("Test | mul r2 r4 @ T0 | pc=44, ma=40 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		#10 $display("Test | mul r2 r4 @ T0 | pc=11, ma=10 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		control_reset(); md_in_memory <= 1'b1;
-		#10 $display("Test | mul r2 r4 @ T1 | md=0x70120000 | md=0x%h", _dp._md.d);
+		control_reset();
+		#10 $display("Test | mul r2 r4 @ T1 | md=0x70120000 | md=0x%h", _dp._memory.data_out);
 		
 		// T2
 		control_reset(); ir_en <= 1'b1;
@@ -444,11 +440,11 @@ module cpu_test;
 		
 		// T0
 		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-		#10 $display("Test | div r2 r4 @ T0 | pc=48, ma=44 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		#10 $display("Test | div r2 r4 @ T0 | pc=12, ma=11 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		control_reset(); md_in_memory <= 1'b1;
-		#10 $display("Test | div r2 r4 @ T1 | md=0x78120000 | md=0x%h", _dp._md.d);
+		control_reset();
+		#10 $display("Test | div r2 r4 @ T1 | md=0x78120000 | md=0x%h", _dp._memory.data_out);
 		
 		// T2
 		control_reset(); ir_en <= 1'b1;
@@ -460,12 +456,13 @@ module cpu_test;
 	
 		// neg r5, r2
 		
+		// T0
 		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-		#10 $display("Test | neg r5 r2 @ T0 | pc=52, ma=48 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		#10 $display("Test | neg r5 r2 @ T0 | pc=13, ma=12 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		control_reset(); md_in_memory <= 1'b1;
-		#10 $display("Test | neg r5 r2 @ T1 | md=0x82900000 | md=0x%h", _dp._md.d);
+		control_reset();
+		#10 $display("Test | neg r5 r2 @ T1 | md=0x82900000 | md=0x%h", _dp._memory.data_out);
 		
 		// T2
 		control_reset(); ir_en <= 1'b1;
@@ -477,12 +474,13 @@ module cpu_test;
 		
 		// not r5, r2
 		
+		// T0
 		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-		#10 $display("Test | not r5 r2 @ T0 | pc=56, ma=52 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		#10 $display("Test | not r5 r2 @ T0 | pc=14, ma=13 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
 		
 		// T1
-		control_reset(); md_in_memory <= 1'b1;
-		#10 $display("Test | not r5 r2 @ T1 | md=0x8a900000 | md=0x%h", _dp._md.d);
+		control_reset();
+		#10 $display("Test | not r5 r2 @ T1 | md=0x8a900000 | md=0x%h", _dp._memory.data_out);
 		
 		// T2
 		control_reset(); ir_en <= 1'b1;

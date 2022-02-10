@@ -38,7 +38,7 @@
 
 set_global_assignment -name FAMILY "Cyclone III"
 set_global_assignment -name DEVICE EP3C16F484C6
-set_global_assignment -name TOP_LEVEL_ENTITY fpu
+set_global_assignment -name TOP_LEVEL_ENTITY cpu
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "13.0 SP1"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "14:13:55  JANUARY 24, 2022"
 set_global_assignment -name LAST_QUARTUS_VERSION "13.0 SP1"
@@ -62,6 +62,7 @@ set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id alu_shift_le
 set_global_assignment -name EDA_TEST_BENCH_RUN_SIM_FOR "100 ns" -section_id alu_shift_left
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME alu_shift_left_test -section_id alu_shift_left
 set_global_assignment -name EDA_TEST_BENCH_FILE alu_shift_left.v -section_id alu_shift_left
+set_global_assignment -name SDC_FILE cpu.sdc
 set_global_assignment -name VERILOG_FILE hdl/fpu/cast_float_to_int.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/cast_int_to_float.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/count_leading_zeros.v
@@ -71,7 +72,6 @@ set_global_assignment -name VERILOG_FILE hdl/fpu/float_multiplier.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/fpu.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/greater_than_unsigned.v
 set_global_assignment -name VERILOG_FILE hdl/fpu/round_to_nearest_even.v
-set_global_assignment -name VERILOG_FILE hdl/adder_subtractor.v
 set_global_assignment -name VERILOG_FILE hdl/alu.v
 set_global_assignment -name VERILOG_FILE hdl/array_div.v
 set_global_assignment -name VERILOG_FILE hdl/booth_bit_pair_multiplier.v
