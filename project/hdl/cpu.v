@@ -233,7 +233,7 @@ module cpu_test;
 		
 		// Initialize Memory
 		$display("Initializing Memory");
-		$readmemh("test/memory.mem", _dp._memory.data);
+		$readmemh("out/cpu_testbench.mem", _dp._memory.data);
 		
 		// Initialize RF via two addi instructions
 		// addi r2, r0, 53
