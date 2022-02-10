@@ -10,12 +10,15 @@
 
 !/project/Makefile
 
-!/project/asm/**/*.s
 !/project/assembler/main.py
-!/project/hdl/**/*.v
-!/project/src/fpu.c
-!/project/src/fpu.h
 !/project/test/setup.py
+
+!/project/src/**/*.c
+!/project/src/**/*.h
+
+!/project/asm/**/*.s
+
+!/project/hdl/**/*.v
 !/project/cpu.qpf
 !/project/cpu.qsf
 !/project/cpu.sdc

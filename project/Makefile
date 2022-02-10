@@ -1,6 +1,6 @@
 
 SHELL = /bin/bash
-VPATH = hdl hdl/fpu
+VPATH = hdl hdl/fpu hdl/test
 
 OUT  := out
 HDL  := hdl
@@ -77,6 +77,10 @@ run : $(WORK) $(OUTPUTS) $(MEMORY) $(OUT)/fpu.o
 		printf "$(VSIM)" $(mod) | vsim > $(VSIM_LOG); \
 		python test/setup.py $(VSIM_LOG); \
 	fi
+
+.PHONY : constants
+constants : out/constants.o
+	./out/constants.o
 
 $(OUT)/%.o : $(SRC)/%.c
 	mkdir -p $(OUT)
