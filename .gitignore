@@ -10,14 +10,14 @@
 
 !/project/Makefile
 
+!/project/asm/**/*.s
+!/project/assembler/main.py
 !/project/hdl/**/*.v
-!/project/cpu.qpf
-!/project/cpu.qsf
-
-!/project/test/setup.py
-!/project/test/*.mem
-
 !/project/src/fpu.c
 !/project/src/fpu.h
+!/project/test/setup.py
+!/project/cpu.qpf
+!/project/cpu.qsf
+!/project/cpu.sdc
 
 __pycache__

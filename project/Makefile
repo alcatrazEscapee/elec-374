@@ -5,21 +5,23 @@ VPATH = hdl hdl/fpu
 OUT  := out
 HDL  := hdl
 SRC  := src
+ASM  := asm
 WORK := work
 TEST := test
 SIMULATION := simulation/modelsim
 
 VLIB := vlib
 VLOG := vlog +acc
+GCC  := gcc -std=c11
 VSIM := vsim -voptargs=+acc work.%s_test\nrun 10000ns
-GCC := gcc -std=c11
+ASSEMBLER := python assembler/main.py
 
 SOURCES  := $(shell find $(HDL) -name '*.v' -printf '%f ')
-MEMORY   := $(shell find $(TEST) -name '*.mem')
+ASSEMBLY := $(shell find $(ASM) -name '*.s' -printf '%f ')
 
 OUTPUTS  := $(SOURCES:%.v=$(WORK)/%/_primary.vhd)
 TESTS    := $(SOURCES:%.v=%)
-MEMORY_OUTPUTS := $(MEMORY:%.mem=$(SIMULATION)/%.mem)
+MEMORY   := $(ASSEMBLY:%.s=$(OUT)/%.mem)
 
 VSIM_LOG := $(OUT)/vsim.log
 
@@ -27,14 +29,12 @@ VSIM_LOG := $(OUT)/vsim.log
 
 .PHONY : help
 help :
-	@echo "make modelsim    : Sets up requirements for ModelSim"
+	@echo "make asm         : Assembles all programs into .mem outputs"
 	@echo "make all         : Runs all tests"
 	@echo "make compile-all : A subset of 'make all', intended to be used by CI"
 	@echo "make mod=foo     : Runs tests for the module 'foo'"
 	@echo "make clean       : Cleans all build files"
-
-.PHONY : modelsim
-modelsim : $(WORK) $(SIMULATION)/$(TEST) $(MEMORY_OUTPUTS)
+	echo $(MEMORY)
 
 .PHONY : clean
 clean : clean-backups clean-outputs
@@ -55,7 +55,7 @@ clean-outputs :
 	rm -f transcript
 
 .PHONY : compile-all
-compile-all : $(WORK) $(OUTPUTS) $(OUT)/fpu.o
+compile-all : $(WORK) $(OUTPUTS) $(MEMORY) $(OUT)/fpu.o
 	@mkdir -p $(OUT)
 	@echo start > $(VSIM_LOG)
 	-@for mod in $(TESTS) ; do \
@@ -68,7 +68,7 @@ all : compile-all
 	@python test/setup.py $(VSIM_LOG)
 	
 .PHONY : run
-run : $(WORK) $(OUTPUTS) $(OUT)/fpu.o
+run : $(WORK) $(OUTPUTS) $(MEMORY) $(OUT)/fpu.o
 	@mkdir -p $(OUT)
 	-@if [ "$(mod)" = "" ]; then \
 		echo "No module provided - try with make mod=foo" ; \
@@ -88,8 +88,8 @@ $(WORK) :
 $(OUTPUTS) : $(WORK)/%/_primary.vhd : %.v
 	$(VLOG) "$<"
 
-$(SIMULATION)/$(TEST) :
-	mkdir -p $(SIMULATION)/$(TEST)
-
-$(SIMULATION)/%.mem : %.mem
-	cp $< $@
+$(OUT)/%.mem : $(ASM)/%.s
+	mkdir -p $(OUT)
+	$(ASSEMBLER) $< -o $@
+	mkdir -p $(SIMULATION)/$(OUT)
+	cp $@ $(SIMULATION)/$@
