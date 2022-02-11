@@ -2,6 +2,7 @@
 #define FPU_H
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <math.h>
 #include <fenv.h>
@@ -29,6 +30,10 @@ _Static_assert(sizeof(float) == 4, "sizeof(float) == 4");
 #define FLOAT(x) (* (float*) &(x))
 #define INT(x) (* (int32_t*) &(x))
 #define UINT(x) (* (uint32_t*) &(x))
+
+#define SIGN(x) ((INT(x) >> 31) & 0b1)
+#define EXPONENT(x) ((INT(x) >> 23) & 0b11111111)
+#define MANTISSA(x) (INT(x) & 0b11111111111111111111111)
 
 void print_float(float, char);
 void print_int(int32_t, char, char);
@@ -67,13 +72,6 @@ void print_bits(int32_t* value, uint32_t count) {
 #define FLT_INT_MAX_P1 ((INT_MAX/2 + 1)*2.0f)
 
 bool convert_float_to_int(int32_t *i, float f) {
-    #if INT_MIN == -INT_MAX
-    // Rare non 2's complement integer
-    if (fabsf(f) < FLT_INT_MAX_P1) {
-        *i = (int32_t) f;
-        return true;
-    }
-    #else
     // Do not use f + 1 > INT_MIN as it may incur rounding
     // Do not use f > INT_MIN - 1.0f as it may incur rounding
     // f - INT_MIN is expected to be exact for values near the limit
@@ -81,7 +79,6 @@ bool convert_float_to_int(int32_t *i, float f) {
         *i = (int32_t) f;
         return true;
     }
-    #endif
     return false;  // out of range
 }
 

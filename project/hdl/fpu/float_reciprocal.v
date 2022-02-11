@@ -96,7 +96,7 @@ module float_reciprocal (
 		
 		fmul_a_in = fa;
 		fmul_b_in = fb;
-			
+		
 		case (counter_out)
 			4'h0 :
 				begin

@@ -22,3 +22,8 @@ fsub f6 f3 f5 // f6 = approximation delta
 // Compare
 feq r1 f3 f5 // pi == approximation ?
 fgt r2 f6 f0 // delta > 0 ?
+
+// Move and Cast Back
+crf r1 f6
+curf r1 f6
+mvfr r2 f3
