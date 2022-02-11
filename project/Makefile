@@ -82,7 +82,7 @@ $(WORK) :
 $(OUTPUTS) : $(WORK)/%/_primary.vhd : %.v
 	$(VLOG) "$<"
 
-$(OUT)/%.mem : $(ASM)/%.s
+$(OUT)/%.mem : $(ASM)/%.s assembler/main.py
 	mkdir -p $(OUT)
 	$(ASSEMBLER) $< -o $@
 	mkdir -p $(SIMULATION)/$(OUT)
