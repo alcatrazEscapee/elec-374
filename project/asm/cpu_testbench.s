@@ -1,8 +1,8 @@
-// Initialize RF : r2 = 53, r4 = 28
+// Phase 1 Setup : r2 = 53, r4 = 28
 addi r2, r0, 53
 addi r4, r0, 28
 
-// Test Instructions
+// Phase 1
 and r5, r2, r4
 or r5, r2, r4
 add r5, r2, r4
@@ -18,7 +18,7 @@ not r5, r2
 
 // Phase 2
 ld r1, 85
-ld r0, 35(r1)
+ld r0, 35(r1) // Loads from 35 + 10
 ldi r1, 85
 ldi r0, 35(r1)
 st 90, r1
@@ -37,5 +37,5 @@ mflo r2
 out r1
 in r1
 
-.mem 85, 0xdeadbeef
-.mem 35, 0xf000000d
+.mem 85, 10
+.mem 45, 0xdeadbeef

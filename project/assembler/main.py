@@ -60,7 +60,8 @@ def main():
 
         # calculate padding
         diff = address - word_count
-        lines.extend(["00000000"]*diff)
+        assert diff >= 0, 'Overlapping memory values and assembly!'
+        lines.extend(["00000000"] * diff)
 
         # write values
         str_values = [hex(x)[2:].zfill(8) for x in values]
@@ -74,21 +75,6 @@ def main():
         for line in lines:
             f.write(line + '\n')
 
-
-def constant(x: str) -> int:
-    return int(x) & ((1 << 19) - 1)
-
-def opcode(x: str) -> int:
-    if x in INSTRUCTIONS:
-        return INSTRUCTIONS[x] << 27
-    if x in FPU_INSTRUCTIONS:
-        return (FPU_OPCODE << 27) | FPU_INSTRUCTIONS.index(x)
-
-def register(x: str, offset: int = 0) -> int:
-    return int(re.search('[rf]([0-9]{1,2})', x).group(1)) << offset
-
-def condition(x: int) -> int:
-    return x << 19
 
 def handle_instruction(token: str, tokens: List[str], line: str, line_no: int) -> str:
     try:
@@ -121,14 +107,7 @@ def handle_instruction(token: str, tokens: List[str], line: str, line_no: int) -
         elif token in ('brzr', 'brnx', 'brpl', 'brmi'):
             # only supports literal constants (no labels)
             ra, c, *_ = tokens
-            if 'zr' in token:
-                c2 = 0
-            elif 'nx' in token:
-                c2 = 1
-            elif 'pl' in token:
-                c2 = 2
-            else:
-                c2 = 3
+            c2 = ['zr', 'nx', 'pl', 'mi'].index(token[2:])
             inst = register(ra, 23) | condition(c2) | constant(c)
         elif token in ('mfhi', 'mflo', 'in', 'out', 'jal', 'jr'):
             ra, *_ = tokens
@@ -169,6 +148,22 @@ def handle_directive(token: str, tokens: List[str], line: str, line_no: int):
             raise NotImplementedError('Fixme, line %d:\n%s' % (1 + line_no, line))
     except Exception as err:
         raise RuntimeError('Broken Line %d:\n%s' % (1 + line_no, line)) from err
+
+
+def opcode(x: str) -> int:
+    if x in INSTRUCTIONS:
+        return INSTRUCTIONS[x] << 27
+    if x in FPU_INSTRUCTIONS:
+        return (FPU_OPCODE << 27) | FPU_INSTRUCTIONS.index(x)
+
+def register(x: str, offset: int = 0) -> int:
+    return int(re.search('[rf]([0-9]{1,2})', x).group(1)) << offset
+
+def constant(x: str) -> int:
+    return eval(x) & ((1 << 19) - 1)
+
+def condition(x: int) -> int:
+    return x << 19
 
 
 INSTRUCTIONS = {
