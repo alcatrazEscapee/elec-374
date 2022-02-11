@@ -4,23 +4,32 @@
 # Usage: assembler/main.py <input file> [-o <output file>]
 
 import re
-import argparse
+
+from argparse import ArgumentParser, Namespace
 from typing import List
 
 
-def main():
-    parser = argparse.ArgumentParser('Primitive Assembler')
+def parse_command_line_args() -> Namespace:
+    parser = ArgumentParser('Primitive Assembler')
     parser.add_argument('input_file', type=str, help='Input Assembly')
     parser.add_argument('-o', type=str, default=None, dest='output_file', help='Output file')
 
-    args = parser.parse_args()
+    return parser.parse_args()
 
+def main(args: Namespace):
     input_file = args.input_file
     output_file = args.output_file if args.output_file is not None else input_file.replace('.s', '.mem')
 
     with open(input_file, 'r', encoding='utf-8') as f:
         text = f.read()
     
+    lines = assemble(text)
+
+    with open(output_file, 'w', encoding='utf-8') as f:
+        for line in lines:
+            f.write(line + '\n')
+
+def assemble(text: str) -> List[str]:
     # Did I mention this was insanely primitive yet?
     word_count = 0
     lines = []
@@ -70,21 +79,14 @@ def main():
         # update word count
         word_count += len(values) + diff
 
-
-    with open(output_file, 'w', encoding='utf-8') as f:
-        for line in lines:
-            f.write(line + '\n')
-
+    return lines
 
 def handle_instruction(token: str, tokens: List[str], line: str, line_no: int) -> str:
     try:
         if token in ('add', 'sub', 'shr', 'shl', 'ror', 'rol', 'and', 'or'):
             ra, rb, rc, *_ = tokens
             inst = register(ra, 23) | register(rb, 19) | register(rc, 15)
-        elif token in ('mul', 'div'):
-            rb, rc, *_ = tokens
-            inst = register(rb, 19) | register(rc, 15)
-        elif token in ('neg', 'not'):
+        elif token in ('neg', 'not', 'mul', 'div'):
             ra, rb, *_ = tokens
             inst = register(ra, 23) | register(rb, 19)
         elif token in ('addi', 'andi', 'ori'):
@@ -126,12 +128,7 @@ def handle_instruction(token: str, tokens: List[str], line: str, line_no: int) -
         raise RuntimeError('Broken Line %d:\n%s' % (1 + line_no, line)) from err
 
     inst |= opcode(token)
-    inst_str = hex(inst)[2:].zfill(8)
-    bin_str = "0b" + bin(inst)[2:].zfill(32)
-
-    instr_line = inst_str + ' // ' + line + ' // ' + bin_str
-
-    return instr_line
+    return hex(inst)[2:].zfill(8) + ' // ' + line
 
 def handle_directive(token: str, tokens: List[str], line: str, line_no: int):
     try:
@@ -207,4 +204,4 @@ DIRECTIVES = {
 }
 
 if __name__ == '__main__':
-    main()
+    main(parse_command_line_args())

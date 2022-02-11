@@ -75,10 +75,11 @@ module cpu (
 	assign constant_c = {{13{ir_constant_c[18]}}, ir_constant_c};
 	
 	// Map rA, rB, and rC wires to the register file write address, read address A and B, respectively
+	// mul and div have two parameter registers in rA and rB, that need to map to address A and B
 	// Branch instructions use rA as a read register, not as a write one.
 	assign rf_z_addr = ir_ra;
-	assign rf_a_addr = ir_opcode == 5'b10010 ? ir_ra : ir_rb_or_c2;
-	assign rf_b_addr = ir_rc;
+	assign rf_a_addr = (ir_opcode == 5'b10010 || ir_opcode == 5'b01110 || ir_opcode == 5'b01111) ? ir_ra : ir_rb_or_c2;
+	assign rf_b_addr = (ir_opcode == 5'b01110 || ir_opcode == 5'b01111) ? ir_rb_or_c2 : ir_rc;
 	
 	// Evaluate the branch condition based on C2
 	
@@ -349,13 +350,13 @@ module cpu_test;
 		#5 $display("Test | rol r5 r2 r4 @ >T3 | r5=1342177283 | r5=%0d", _cpu._rf.data[5]);
 		
 		// mul r2, r4
-		next_instruction(10, "mul r2 r4", 32'h70120000);
+		next_instruction(10, "mul r2 r4", 32'h71200000);
 		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; alu_mul <= 1'b1; hi_en <= 1'b1; lo_en <= 1'b1;
 		#5 $display("Test | mul r2 r4 @ <T3 | a=53, b=28 | a=%0d, b=%0d", _cpu._alu.a, _cpu._alu.b);
 		#5 $display("Test | mul r2 r4 @ >T3 | hi=0, lo=1484 | hi=%0d, lo=%0d", _cpu._hi.d, _cpu._lo.d);
 		
 		// div r2, r4
-		next_instruction(11, "div r2 r4", 32'h78120000);
+		next_instruction(11, "div r2 r4", 32'h79200000);
 		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; alu_div <= 1'b1; hi_en <= 1'b1; lo_en <= 1'b1;
 		#5 $display("Test | div r2 r4 @ <T3 | a=53, b=28 | a=%0d, b=%0d", _cpu._alu.a, _cpu._alu.b);
 		#5 $display("Test | div r2 r4 @ >T3 | hi=25, lo=1 | hi=%0d, lo=%0d", _cpu._hi.d, _cpu._lo.d);

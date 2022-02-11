@@ -79,7 +79,7 @@ module register_file_test;
 		addr_b <= 0;
 		#1;
 		$display("Test | register file read a2 | a=124 | a=%0d", a);
-		$display("Test | register file read b2 | b=0 | b=%0d", b);
+		$display("Test | register file read b2 | b=999 | b=%0d", b);
 		
 		$finish;
 	end

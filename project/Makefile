@@ -84,7 +84,7 @@ constants : out/constants.o
 
 $(OUT)/%.o : $(SRC)/%.c
 	mkdir -p $(OUT)
-	$(GCC) $< -o $@
+	$(GCC) $< -lm -o $@
 
 $(WORK) :
 	$(VLIB) $(WORK)
