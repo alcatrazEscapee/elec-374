@@ -118,7 +118,7 @@ def main():
         print('Verifying FPU Tests (%s)' % op)
         fpu_lines.append('\nRunning fpu (%s)\n' % op)
         proc_op = cmd_replacements[op] if op in cmd_replacements else op
-        proc = subprocess.Popen((os.path.join('out', 'fpu.o'), proc_op), shell=True, encoding='utf-8', stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        proc = subprocess.Popen(os.path.join('out', 'fpu.o') + ' ' + proc_op, shell=True, encoding='utf-8', stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         inputs = scan_for_xz(tests)
         out, err = proc.communicate(inputs)
         fpu_lines.append(out)
