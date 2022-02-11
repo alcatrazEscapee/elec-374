@@ -42,12 +42,23 @@ def main():
                     elif token in ('neg', 'not'):
                         ra, rb, *_ = tokens
                         inst = register(ra, 23) | register(rb, 19)
-                    elif token in ('addi', 'andi', 'ori', 'ld', 'ldi'):
+                    elif token in ('addi', 'andi', 'ori'):
                         ra, rb, c, *_ = tokens
                         inst = register(ra, 23) | register(rb, 19) | constant(c)
+                    elif token in ('ld', 'ldi'):
+                        ra, other, *_ = tokens
+                        if "(" in other:
+                            c, rb = other.replace(")", "").split("(")
+                        else:
+                            rb, c = ("r0", other)
+                        inst = register(ra, 23) | register(rb, 19) | constant(c)
                     elif token == 'st':
-                        ra, c, *_ = tokens
-                        inst = register(ra, 23) | constant(c)
+                        other, ra, *_ = tokens
+                        if "(" in other:
+                            c, rb = other.replace(")", "").split("(")
+                        else:
+                            rb, c = ("r0", other)
+                        inst = register(ra, 23) | register(rb, 19) | constant(c)
                     elif token in ('mfhi', 'mflo', 'in', 'out'):
                         ra, *_ = tokens
                         inst = register(ra, 23)
