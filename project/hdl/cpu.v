@@ -490,6 +490,60 @@ module cpu_test;
 		control_reset(); alu_a_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_not <= 1'b1;
 		#10; $display("Test | not r5 r2 @ T3 | a=0x00000035, z=0xffffffca, r5=0xffffffca | a=0x%h, z=0x%h, r5=0x%h", _dp._alu.a, _dp._alu.z, _dp._rf.data[5]);
 		
+		// PHASE 2
+		
+		// ld r1, 85
+		
+		// T0
+		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
+		#10 $display("Test | ld r1 85 @ T0 | pc=15, ma=14 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		
+		// T1
+		control_reset();
+		#10 $display("Test | ld r1 85 @ T1 | md=0x00800055 | md=0x%h", _dp._memory.data_out);
+		
+		// T2
+		control_reset(); ir_en <= 1'b1;
+		#10 $display("Test | ld r1 85 @ T2 | ir=0x00800055 | ir=0x%h", _dp._ir.d);
+		
+		// T3
+		control_reset(); ma_in_alu <= 1'b1; alu_add <= 1'b1; alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1;
+		#10; $display("Test | ld r1 85 @ T3 | ma=0x00000055, a=0x00000000, b=0x00000055 | ma=0x%h, a=0x%h, b=0x%h", _dp._ma.d, _dp._alu.a, _dp._alu.b);
+		
+		// T4
+		control_reset();
+		#10; $display("Test | ld r1 85 @ T4 | md=0xdeadbeef | md=0x%h", _dp._memory.data_out);
+		
+		// T5
+		control_reset(); rf_in_memory <= 1'b1;
+		#10; $display("Test | ld r1 85 @ T5 | r1=0xdeadbeef | r1=0x%h", _dp._rf.data[1]);
+		
+		// ld r0, 35(r1)
+		
+		// T0
+		control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
+		#10 $display("Test | ld r0, 35(r1) @ T0 | pc=16, ma=15 | pc=%0d, ma=%0d", _dp._pc.d, _dp._ma.d);
+		
+		// T1
+		control_reset();
+		#10 $display("Test | ld r0, 35(r1) @ T1 | md=0x00080023 | md=0x%h", _dp._memory.data_out);
+		
+		// T2
+		control_reset(); ir_en <= 1'b1;
+		#10 $display("Test | ld r0, 35(r1) @ T2 | ir=0x00080023 | ir=0x%h", _dp._ir.d);
+		
+		// T3
+		control_reset(); ma_in_alu <= 1'b1; alu_add <= 1'b1; alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1;
+		#10; $display("Test | ld r0, 35(r1) @ T3 | ma=0x00000023, a=0x00000000, b=0x00000023 | ma=0x%h, a=0x%h, b=0x%h", _dp._ma.d, _dp._alu.a, _dp._alu.b);
+		
+		// T4
+		control_reset();
+		#10; $display("Test | ld r0, 35(r1) @ T4 | md=0xf000000d | md=0x%h", _dp._memory.data_out);
+		
+		// T5
+		control_reset(); rf_in_memory <= 1'b1;
+		#10; $display("Test | ld r0, 35(r1) @ T5 | r1=0xf000000d | r1=0x%h", _dp._rf.data[1]);
+		
 		$finish;
 	end
 endmodule
