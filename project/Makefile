@@ -24,6 +24,7 @@ TESTS    := $(SOURCES:%.v=%)
 MEMORY   := $(ASSEMBLY:%.s=$(OUT)/%.mem)
 
 VSIM_LOG := $(OUT)/vsim.log
+FPU_OUT  := $(OUT)/fpu.o
 
 .DEFAULT_GOAL = run
 
@@ -55,7 +56,7 @@ clean-outputs :
 	rm -f transcript
 
 .PHONY : compile-all
-compile-all : $(WORK) $(OUTPUTS) $(MEMORY) $(OUT)/fpu.o
+compile-all : $(WORK) $(OUTPUTS) $(MEMORY) $(FPU_OUT)
 	@mkdir -p $(OUT)
 	@echo start > $(VSIM_LOG)
 	-@for mod in $(TESTS) ; do \
@@ -68,7 +69,7 @@ all : compile-all
 	@python test/setup.py $(VSIM_LOG)
 	
 .PHONY : run
-run : $(WORK) $(OUTPUTS) $(MEMORY) $(OUT)/fpu.o
+run : $(WORK) $(OUTPUTS) $(MEMORY) $(FPU_OUT)
 	@mkdir -p $(OUT)
 	-@if [ "$(mod)" = "" ]; then \
 		echo "No module provided - try with make mod=foo" ; \
