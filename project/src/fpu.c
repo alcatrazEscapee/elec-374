@@ -100,11 +100,20 @@ void binary_op_floats(char op) {
 void reciprocal_float() {
     int32_t i, j;
     while (scanf("%x", &i) != -1 && scanf("%x", &j) != -1) {
-        float f = 1.0f / FLOAT(i), g = FLOAT(j), err = fabsf(f - g) / fmaxf(fabsf(f), fabsf(g));
+        float f = 1.0f / FLOAT(i), g = FLOAT(j);
         print_float(FLOAT(i), '|');
         print_float(f, '|');
         print_float(g, '|');
-        printf("%e|%s\n", err, err < 2e-4 ? "true" : "false");
+
+        float realitive_error = fabsf(f - g) / fmaxf(fabsf(f), fabsf(g));
+        float binary_error = (float) abs(MANTISSA(f) - MANTISSA(g)) / (1 << 23);
+        bool close_enough = 
+               realitive_error <= 2e-4 // Realitive Error below threshold
+            && SIGN(f) == SIGN(g) // Equal sign
+            && EXPONENT(f) == EXPONENT(g) // Equal exponent
+            && binary_error <= (1.0f / (1 << 12)); // Correct to 12 binary decimal places
+
+        printf("(Realitive) %e (Binary) %e|%s\n", realitive_error, binary_error, close_enough ? "true" : "false");
     }
 }
 

@@ -307,6 +307,27 @@ module fpu_test;
 		fpu_mode <= 1'b1; fpu_fgt <= 1'b1; rf_in_fpu <= 1'b1;
 		#5 $display("Test | fgt r2 f5 f0 @ T3 | a=0x39a1c000, b=0x00000000, z=0 | a=0x%h, b=0x%h, z=%0b", _dp._fpu.fa, _dp._fpu.fb, _dp._alu.z);
 		#5 $display("Test | fgt r2 f5 f0 @ End | r2=1 | r2=%0b", _dp._rf.data[2]);
+		
+		// crf r1 f6
+		
+		next_instruction();
+		fpu_mode <= 1'b1; fpu_crf <= 1'b1; rf_in_fpu <= 1'b1;
+		#5 $display("Test | crf r1 f6 @ T3 | a=0x39a1c000 | a=0x%h", _dp._fpu.fa);
+		#5 $display("Test | crf r1 f6 @ End | r1=0 | r1=%0b", _dp._rf.data[1]);
+		
+		// curf r1 f6
+		
+		next_instruction();
+		fpu_mode <= 1'b1; fpu_curf <= 1'b1; rf_in_fpu <= 1'b1;
+		#5 $display("Test | curf r1 f6 @ T3 | a=0x39a1c000 | a=0x%h", _dp._fpu.fa);
+		#5 $display("Test | curf r1 f6 @ End | r1=0 | r1=%0b", _dp._rf.data[1]);
+		
+		// mvfr r2 f3
+		
+		next_instruction();
+		fpu_mode <= 1'b1; fpu_mvfr <= 1'b1; rf_in_fpu <= 1'b1;
+		#5 $display("Test | mvfr r2 f3 @ T3 | a=0x40490fdb | a=0x%h", _dp._fpu.fa);
+		#5 $display("Test | mvfr r2 f3 @ End | r1=0x40490fdb | r1=0x%h", _dp._rf.data[2]);
 	
 		$finish;
 	end
