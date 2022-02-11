@@ -24,7 +24,7 @@ module float_compare (
 		sign_gt ||
 		(sa == sb && sa == 1'b0 && exp_gt) ||
 		(sa == sb && sa == 1'b1 && ea != eb && !exp_gt) ||
-		(sa == sb && ea == eb && mantissa_gt)
+		(sa == sb && ea == eb && (sa ? !mantissa_gt : mantissa_gt))
 	);
 	
 endmodule
@@ -47,6 +47,13 @@ module float_compare_test;
 
 	integer i;
 	initial begin
+		// Regressions
+		sa <= 1'b1; ea <= 8'b11110111; ma <= 23'b11110100101110011110001; // -2.59992e+36
+		sb <= 1'b1; eb <= 8'b11110111; mb <= 23'b01101100101001111010101; // -1.8934e+36
+		#1
+		$display("Test fpu > | float greater than | %h | %h | %b", fa, fb, gt);
+		$display("Test fpu = | float equal | %h | %h | %b", fa, fb, eq);
+	
 		for (i = 0; i < 1000; i = i + 1) begin
 			sa <= $urandom;
 			sb <= $urandom;

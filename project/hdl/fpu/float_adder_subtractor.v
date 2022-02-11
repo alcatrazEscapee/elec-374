@@ -23,14 +23,9 @@ module float_adder_subtractor (
 	// inf + real = inf
 	always @(*) begin
 		casez ({1'b0, fa[30:0], 1'b0, fb[30:0]}) // Ignore the sign bit for now
-			// NaN + NaN
-			// Behaves the same in + or - meaning we use fa[31] and fb[31] to check the sign bit
-			// Output is negative only if both inputs are negative, ignoring the operation (i.e. -NaN - -NaN is still negative)
-			64'h7fc00000_7fc00000 : fz = 32'h7fc00000 | {fa[31] & fb[31], 31'b0};
-			// NaN + Anything or Anything + NaN
-			// Output the NaN input exactly (copy the sign)
-			64'h7fc00000_???????? : fz = fa;
-			64'h????????_7fc00000 : fz = fb;
+			// NaN + Anything or Anything + NaN = NaN
+			64'h7fc00000_????????,
+			64'h????????_7fc00000 : fz = 32'h7fc00000;
 			// Infinity + Infinity
 			// This one **does** take into account the operation, and so inf - X == inf + (-X)
 			// When the signs are the same, this outputs the input (so inf + inf = inf)

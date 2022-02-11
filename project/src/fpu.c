@@ -92,8 +92,21 @@ void binary_op_floats(char op) {
             0;
         print_float(FLOAT(i), '|');
         print_float(FLOAT(j), '|');
-        print_float(f, '|');
-        print_float(FLOAT(k), '\n');
+        if (isnan(FLOAT(i)) || isnan(FLOAT(j))) {
+            print_float(NAN, ' ');
+            printf("(illegal)|");
+            print_float(FLOAT(k), ' ');
+            printf("(illegal)\n");
+        } else {
+            float f = 
+                op == ADD ? FLOAT(i) + FLOAT(j) :
+                op == SUB ? FLOAT(i) - FLOAT(j) :
+                op == MUL ? FLOAT(i) * FLOAT(j) :
+                op == DIV ? FLOAT(i) / FLOAT(j) :
+                0;
+            print_float(f, '|');
+            print_float(FLOAT(k), '\n');
+        }
     }
 }
 
