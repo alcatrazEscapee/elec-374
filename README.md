@@ -48,7 +48,7 @@ Index | Opcode | Name | Assembly | RTN
 17 | `10001` | Not | `not rA, rB` | `rA <- ~rB`
 18 | `10010` | Conditional Branch | `br<condition> rA, C` | `if condition(rA), PC <- PC + C`
 19 | `10011` | Jump (Return) | `jr rA` | `PC <- rA`
-20 | `10100` | Jump and Link (Call) | `jal rA` | `r15 <- PC + 1, PC <- rA`
+20 | `10100` | Jump and Link (Call) | `jal rA` | `rA <- PC + 1, PC <- rA`
 21 | `10101` | Input | `in rA` | `rA <- Input`
 22 | `10110` | Output | `out rA` | `Output <- rA`
 23 | `10111` | Move from HI | `mfhi rA` | `rA <- HI`

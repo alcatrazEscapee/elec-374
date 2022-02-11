@@ -26,13 +26,13 @@ st 90(r1), r1
 addi r2, r1, -5
 andi r2, r1, 26
 ori r2, r1, 26
-// brzr r2, 35
-// brnx r2, 35
-// brpl r2, 35
-// brmi r2, 35
-// jr r1
-// jal r1
-// mfhi r2
-// mflo r2
-// out r1
-// in r1
+brzr r2, 35
+brnx r2, 35
+brpl r2, 35
+brmi r2, 35
+jr r1
+jal r1
+mfhi r2
+mflo r2
+out r1
+in r1
