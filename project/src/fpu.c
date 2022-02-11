@@ -104,7 +104,7 @@ void reciprocal_float() {
         print_float(FLOAT(i), '|');
         print_float(f, '|');
         print_float(g, '|');
-        printf("%e|%s\n", err, err < 1e-3 ? "true" : "false");
+        printf("%e|%s\n", err, err < 2e-4 ? "true" : "false");
     }
 }
 

@@ -64,24 +64,27 @@ module fpu (
 		.clr(clr)
 	);
 	
-	// Internal control signals and wires
-	reg x_en, y_en, r_en, t0_en, t1_en;
-	
-	reg [31:0] x_in, y_in, r_in, t0_in, t1_in, fmul_a_in, fmul_b_in, fadd_a_in, fadd_b_in;
-	wire [31:0] x_out, y_out, r_out, t0_out, t1_out, y_const_out, x_negative_out;
-	
-	// Outputs
+	// Inputs / Outputs
 	wire [31:0] z_crf, z_cfr, z_fadd_sub, z_fmul, z_frc;
+	wire [31:0] fadd_a_in, fadd_b_in, fmul_a_in, fmul_b_in;
 	wire z_fgt, z_feq;
 	
-	// Native Floating Point Operations
+	// Floating Point Operations
 	cast_int_to_float _crf ( .in(ra), .out(z_crf), .is_signed(fpu_crf) );
 	cast_float_to_int _cfr ( .in(fa), .out(z_cfr), .is_signed(fpu_cfr), .illegal(illegal_cfr) );
 	
 	float_adder_subtractor _fadd_sub ( .fa(fadd_a_in), .fb(fadd_b_in), .fz(z_fadd_sub), .add_sub(fpu_fsub) );
 	float_multiplier _fmul ( .fa(fmul_a_in), .fb(fmul_b_in), .fz(z_fmul), .alu_a(alu_a), .alu_b(alu_b), .alu_product({alu_hi, alu_lo}) );
-	
-	float_compare _fc ( .fa(fa), .fb(fb), .gt(z_fgt), .eq(z_feq) );
+	float_compare _fcmp ( .fa(fa), .fb(fb), .gt(z_fgt), .eq(z_feq) );
+
+	float_reciprocal _frc (
+		.fa(fa), .fb(fb), .fz(z_frc),
+		.fadd_sub_out(z_fadd_sub), .fmul_out(z_fmul),
+		.fadd_a_in(fadd_a_in), .fadd_b_in(fadd_b_in),
+		.fmul_a_in(fmul_a_in), .fmul_b_in(fmul_b_in),
+		.en(fpu_frc), .clk(clk), .clr(clr)
+	);
+
 	
 	always @(*) begin
 		case (select)
@@ -99,259 +102,212 @@ module fpu (
 			12'b100000000000 : z = {31'b0, z_feq};
 			default          : z = 32'b0;
 		endcase
-	end
-	
-	/*
-	
-	Implement frc (Float Reciprocal)
-	
-	Uses an approximate algorithim based on the following paper:
-	An Effective Floating-Point Reciprocal, Leonid Moroz; Volodymyr Samotyy; Oleh Horyachyy et. al.
-	https://ieeexplore.ieee.org/document/8525803
-	
-	// C
-	// fmaf(a, b, c) = a * b + c
-	float reciprocal_2_f (float x) {
-		int i = *(int*)&x;
-		i = 0x7eb53567 - i;
-		float y = *(float*)&i;
-		y = 1.9395974f * y * fmaf(-x, y, 1.436142f);
-		float r = fmaf(y, -x, 1.0f);
-		y = fmaf(y, r, y);
-		return y;
-	}
-	
-	// RTN
-	
-	0 | X   <= IN; Y <- 0x7eb53567 - IN;
-	1 | T1  <= -X * Y
-	2 | T0  <= 1.9395974f * Y; T1 <- T1 + 1.436142f
-	3 | Y   <= T0 * T1
-	4 | T1  <= -X * Y
-	5 | R   <= T1 + 1.0f
-	6 | T0  <= Y * R
-	7 | Out <= T0 + Y
-	*/
-	
-	// Internal Registers
-	
-	register _x  ( .q(x_in),  .d(x_out),  .en(x_en),  .clk(clk), .clr(clr) );
-	register _y  ( .q(y_in),  .d(y_out),  .en(y_en),  .clk(clk), .clr(clr) );
-	register _r  ( .q(r_in),  .d(r_out),  .en(r_en),  .clk(clk), .clr(clr) );
-	register _t0 ( .q(t0_in), .d(t0_out), .en(t0_en), .clk(clk), .clr(clr) );
-	register _t1 ( .q(t1_in), .d(t1_out), .en(t1_en), .clk(clk), .clr(clr) );
-	
-	// Local step counter - counts 8 cycles and then nicely wraps around to zero
-	wire [2:0] counter_out, counter_inc;
-	
-	ripple_carry_adder #( .BITS(3) ) _counter_inc ( .a(counter_out), .b(3'b1), .sum(counter_inc), .c_in(1'b0), .c_out() );
-	register #( .BITS(3) ) _counter ( .q(counter_inc), .d(counter_out), .en(fpu_frc), .clk(clk), .clr(clr) );
-	
-	// Float Reciprocal
-	ripple_carry_adder #( .BITS(32) ) _y_const_subtract ( .a(32'h7eb53567), .b(~fa), .sum(y_const_out), .c_in(1'b1), .c_out() );
-	
-	assign x_negative_out = {~x_out[31], x_out[30:0]};
-	assign z_frc = y_out;
-	
-	// Control Logic
-	always @(*) begin
-		// Default values
-		x_en = 1'b0;
-		y_en = 1'b0;
-		r_en = 1'b0;
-		t0_en = 1'b0;
-		t1_en = 1'b0;
-		
-		x_in = 32'b0;
-		y_in = 32'b0;
-		r_in = 32'b0;
-		t0_in = 32'b0;
-		t1_in = 32'b0;
-		
-		fadd_a_in = fa;
-		fadd_b_in = fb;
-		
-		fmul_a_in = fa;
-		fmul_b_in = fb;
-		
-		frc_write = 1'b0;
-	
-		case (counter_out)
-			4'h0 :
-				begin
-					x_en = 1'b1;
-					x_in = fa;
-					
-					y_en = 1'b1;
-					y_in = y_const_out;
-				end
-			4'h1 :
-				begin
-					t1_en = 1'b1;
-					t1_in = z_fmul;
-					fmul_a_in = x_negative_out;
-					fmul_b_in = y_out;
-				end
-			4'h2 :
-				begin
-					t0_en = 1'b1;
-					t0_in = z_fmul;
-					fmul_a_in = 32'h3ff844ba; // 1.9395974f
-					fmul_b_in = y_out;
-					
-					t1_en = 1'b1;
-					t1_in = z_fadd_sub;
-					fadd_a_in = t1_out;
-					fadd_b_in = 32'h3fb7d380; // 1.436142f
-				end
-			4'h3 :
-				begin
-					y_en = 1'b1;
-					y_in = z_fmul;
-					fmul_a_in = t0_out;
-					fmul_b_in = t1_out;
-				end
-			4'h4 :
-				begin
-					t1_en = 1'b1;
-					t1_in = z_fmul;
-					fmul_a_in = x_negative_out;
-					fmul_b_in = y_out;
-				end
-			4'h5 :
-				begin
-					r_en = 1'b1;
-					r_in = z_fadd_sub;
-					fadd_a_in = t1_out;
-					fadd_b_in = 32'h3f800000; // 1.0f
-				end
-			4'h6 :
-				begin
-					t0_en = 1'b1;
-					t0_in = z_fmul;
-					fmul_a_in = y_out;
-					fmul_b_in = r_in;
-				end
-			4'h7 :
-				begin
-					// Output
-					frc_write = 1'b1;
-				end
-		endcase
-	end
-	
+	end	
 endmodule
 
 
 `timescale 1ns/100ps
 module fpu_test;
 
-	reg [31:0] ra, rb, fa, fb;
-	reg [11:0] select;
-	wire illegal;
-
-	wire [31:0] z;
-
-	wire [63:0] alu_a, alu_b;
-	wire [63:0] alu_out;
+	// Control Signals
+	reg ir_en;
+	reg pc_increment, pc_in_alu, pc_in_rf_a;
+	reg ma_in_pc, ma_in_alu;
+	reg alu_a_in_rf, alu_a_in_pc;
+	reg alu_b_in_rf, alu_b_in_constant;
+	reg lo_en, hi_en;
+	reg rf_in_alu, rf_in_hi, rf_in_lo, rf_in_memory, rf_in_fpu;
+	reg memory_en;
+		
+	reg alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add;
+	reg fpu_feq, fpu_fgt, fpu_frc, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf, fpu_mvfr, fpu_mvrf;
+	reg fpu_mode;
+	
+	wire [31:0] ir_out;
+	wire branch_condition;
 	
 	reg clk, clr;
 	
-	reg sa, sb;
-	reg [7:0] ea, eb;
-	reg [22:0] ma, mb;
-	reg decomposed_in; // If the input should be mapped to {s, e, m} or the direct 32-bit input
-	
-	wire [31:0] a_in, b_in, result;
-	
-	integer i, exponent, sign, mantissa;
-
-	assign a_in = decomposed_in ? {sa, ea, ma} : fa;
-	assign b_in = decomposed_in ? {sb, eb, mb} : fb;
-	
-	fpu _fpu (
-		.ra(ra), .rb(rb),
-		.fa(a_in), .fb(b_in),
-		.z(z),
-		.select(select),
-		.illegal(illegal),
-		.alu_a(alu_a[31:0]), .alu_b(alu_b[31:0]),
-		.alu_hi(alu_out[63:32]), .alu_lo(alu_out[31:0]),
-		.clk(clk), .clr(clr)
+	cpu _dp (
+		.ir_en(ir_en),
+		.pc_increment(pc_increment), .pc_in_alu(pc_in_alu), .pc_in_rf_a(pc_in_rf_a),
+		.ma_in_pc(ma_in_pc), .ma_in_alu(ma_in_alu),
+		.alu_a_in_rf(alu_a_in_rf), .alu_a_in_pc(alu_a_in_pc),
+		.alu_b_in_rf(alu_b_in_rf), .alu_b_in_constant(alu_b_in_constant),
+		.lo_en(lo_en), .hi_en(hi_en),
+		.rf_in_alu(rf_in_alu), .rf_in_hi(rf_in_hi), .rf_in_lo(rf_in_lo), .rf_in_memory(rf_in_memory), .rf_in_fpu(rf_in_fpu),
+		.alu_select({alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add}),
+		.fpu_select({fpu_feq, fpu_fgt, fpu_frc, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf, fpu_mvfr, fpu_mvrf}),
+		.fpu_mode(fpu_mode),
+		.ir_out(ir_out), .clk(clk), .clr(clr),
+		.memory_en(memory_en),
+		.branch_condition(branch_condition)
 	);
 	
-	// Mock ALU Interface
-	assign alu_a[63:32] = 32'b0;
-	assign alu_b[63:32] = 32'b0;
-	assign alu_out = alu_a * alu_b;
+	task control_reset();
+		// Clears all control signal inputs before each step
+		begin
+			ir_en <= 1'b0;
+			pc_increment <= 1'b0; pc_in_alu <= 1'b0; pc_in_rf_a <= 1'b0;
+			ma_in_pc <= 1'b0; ma_in_alu <= 1'b0;
+			alu_a_in_rf <= 1'b0; alu_a_in_pc <= 1'b0;
+			alu_b_in_rf <= 1'b0; alu_b_in_constant <= 1'b0;
+			lo_en <= 1'b0; hi_en <= 1'b0;
+			rf_in_alu <= 1'b0; rf_in_hi <= 1'b0; rf_in_lo <= 1'b0; rf_in_memory <= 1'b0; rf_in_fpu <= 1'b0;
+			memory_en <= 1'b0;
+			{alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add} <= 12'b0;
+			{fpu_feq, fpu_fgt, fpu_frc, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf, fpu_mvfr, fpu_mvrf} <= 12'b0;
+			fpu_mode <= 1'b0;
+		end
+	endtask
+	
+	/**
+	 * Executes T0, T1, T2 steps (without testing)
+	 */
+	task next_instruction();
+		begin
+			control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1; // T0
+			#10 control_reset(); // T1
+			#10 control_reset(); ir_en <= 1'b1; // T2
+			#10 control_reset();
+		end
+	endtask
+		
 	
 	// Clock
 	initial begin
-		clr <= 1'b0;
-		clk <= 1'b0;
-		forever #1 clk = ~clk;
+		clk <= 1'b1;
+		forever #5 clk <= ~clk;
 	end
 
 	initial begin
-		ra <= 32'b0; rb <= 32'b0; fa <= 32'b0; fb <= 32'b0;
-		select <= 12'b0;
-		decomposed_in <= 1'b0;
+		// Zero all inputs
+		control_reset();
+		clr <= 1'b0;
 		
-		#2
-		clr <= 1'b1;
+		// Start
+		#11 clr <= 1'b1;
 		
-		// Move
-		select <= 12'b000000000001; ra <= 32'h12345678;
-		#2 $display("Test | fpu mvrf | z=0x12345678 | z=0x%h", z);
+		// Initialize Memory
+		$display("Initializing Memory");
+		$readmemh("out/fpu_testbench.mem", _dp._memory.data);
+
+		// Initialization
 		
-		select <= 12'b000000000010; ra <= 32'b0; fa <= 32'h87654321;
-		#2 $display("Test | fpu mvfr | z=0x87654321 | z=0x%h", z);
+		// addi r1 r0 355
 		
-		// Cast (Signed)
-		select <= 12'b000000000100; ra <= 32'h00112233;
-		#2 $display("Test fpu f | fpu crf | %h | %h", ra, z);
+		next_instruction();
+		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
+		#5 $display("Test | addi r1 r0 355 @ T3 | a=0, b=355, z=355 | a=%0d, b=%0d, z=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z);
+		#5 $display("Test | addi r1 r0 355 @ End | r1=355 | r1=%0d", _dp._rf.data[1]);
+	
+		// addi r2 r0 113
 		
-		select <= 12'b000000001000; fa <= 32'h12345678;
-		#2 $display("Test fpu i | fpu cfr | %h | %h | %b", ra, z, _fpu.illegal_cfr);
+		// T0
+		next_instruction();
+		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
+		#5 $display("Test | addi r2 r0 113 @ T3 | a=0, b=113, z=113 | a=%0d, b=%0d, z=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z);
+		#5 $display("Test | addi r2 r0 113 @ End | r2=113 | r2=%0d", _dp._rf.data[2]);
 		
-		// Cast (Unsigned)
-		select <= 12'b000000010000; ra <= 32'h33221100;
-		#2 $display("Test fpu g | fpu curf | %h | %h", ra, z);
+		// ori r3 r0 0x4049
 		
-		select <= 12'b000000100000; ra <= 32'h12345678;
-		#2 $display("Test fpu j | fpu cufr | %h | %h | %b", ra, z, _fpu.illegal_cfr);
-				
-		// Arithmetic
+		// T0
+		next_instruction();
+		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_or <= 1'b1;
+		#5 $display("Test | ori r3 r0 0x4049 @ T3 | a=0, b=0x00004049, z=0x00004049 | a=%0d, b=0x%h, z=0x%h", _dp._alu.a, _dp._alu.b, _dp._alu.z);
+		#5 $display("Test | ori r3 r0 0x4049 @ End | r3=0x00004049 | r3=0x%h", _dp._rf.data[3]);
 		
-		select <= 12'b000001000000; fa <= 32'h12345678; fb <= 32'h87654321;
-		#2 $display("Test fpu + | fpu fadd | %h | %h | %h", fa, fb, z);
+		// addi r4 r0 16
 		
-		select <= 12'b000010000000;
-		#2 $display("Test fpu - | fpu fsub | %h | %h | %h", fa, fb, z);
+		// T0
+		next_instruction();
+		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
+		#5 $display("Test | addi r4 r0 16 @ T3 | a=0, b=16, z=16 | a=%0d, b=%0d, z=%0d", _dp._alu.a, _dp._alu.b, _dp._alu.z);
+		#5 $display("Test | addi r4 r0 16 @ End | r4=16 | r4=%0d", _dp._rf.data[4]);
 		
-		select <= 12'b000100000000;
-		#2 $display("Test fpu * | fpu fmul | %h | %h | %h", fa, fb, z);
+		// shl r3 r3 r4
 		
-		// Compare
+		// T0
+		next_instruction();
+		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_shl <= 1'b1;
+		#5 $display("Test | shl r3 r3 r4 @ T3 | a=0x00004049, b=16, z=0x40490000 | a=0x%h, b=%0d, z=0x%h", _dp._alu.a, _dp._alu.b, _dp._alu.z);
+		#5 $display("Test | shl r3 r3 r4 @ End | r3=0x40490000 | r3=0x%h", _dp._rf.data[3]);
 		
-		select <= 12'b010000000000;
-		#2 $display("Test fpu > | fpu fgt | %h | %h | %0b", fa, fb, z);
+		// ori r3 r3 0x0fdb
 		
-		select <= 12'b100000000000;
-		#2 $display("Test fpu = | fpu feq | %h | %h | %0b", fa, fb, z);
+		// T0
+		next_instruction();
+		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_or <= 1'b1;
+		#5 $display("Test | ori r3 r3 0x0fdb @ T3 | a=0x40490000, b=0x00000fdb, z=0x40490fdb | a=0x%h, b=0x%h, z=0x%h", _dp._alu.a, _dp._alu.b, _dp._alu.z);
+		#5 $display("Test | ori r3 r3 0x0fdb @ End | r3=0x40490fdb | r3=0x%h", _dp._rf.data[3]);
 		
-		// Complex / Approximate Operations (frc)
+		// ===============================================================
+		//                     Floating Point Unit Tests
+		// ===============================================================
 		
-		select <= 12'b001000000000;
-		decomposed_in <= 1'b1;
+		// crf f1 r1
 		
-		for (i = 0; i < 400; i = i + 1) begin
-			sa <= $urandom;
-			ea <= 100 + ($urandom % 50);
-			ma <= $urandom;
-			#16 $display("Test fpu r | fpu frc | %h | %h", a_in, z);
-		end
+		next_instruction();
+		fpu_mode <= 1'b1; fpu_crf <= 1'b1;
+		#5 $display("Test | crf f1 r1 @ T3 | a=0x00000163, z=0x43b18000 | a=0x%h, z=0x%h", _dp._fpu.ra, _dp._fpu.rz);
+		#5 $display("Test | crf f1 r1 @ End | f1=0x43b18000 | f1=0x%h", _dp._fpu._ff.data[1]);
 		
+		// curf f2 r2
+		
+		next_instruction();
+		fpu_mode <= 1'b1; fpu_curf <= 1'b1;
+		#5 $display("Test | curf f2 r2 @ T3 | a=0x00000071, z=0x42e20000 | a=0x%h, z=0x%h", _dp._fpu.ra, _dp._fpu.rz);
+		#5 $display("Test | curf f2 r2 @ End | f2=0x42e20000 | f2=0x%h", _dp._fpu._ff.data[2]);
+		
+		// mvrf f3 r3
+		
+		next_instruction();
+		fpu_mode <= 1'b1; fpu_mvrf <= 1'b1;
+		#5 $display("Test | curf f2 r2 @ T3 | a=0x40490fdb, z=0x40490fdb | a=0x%h, z=0x%h", _dp._fpu.ra, _dp._fpu.rz);
+		#5 $display("Test | curf f2 r2 @ End | f3=0x40490fdb | f3=0x%h", _dp._fpu._ff.data[3]);
+		
+		// fadd f4 f1 f3
+		
+		next_instruction();
+		fpu_mode <= 1'b1; fpu_fadd <= 1'b1;
+		#5 $display("Test | fadd f4 f1 f3 @ T3 | a=0x43b18000, b=0x40490fdb, z=0x43b31220 | a=0x%h, b=0x%h, z=0x%h", _dp._fpu.fa, _dp._fpu.fb, _dp._fpu.rz);
+		#5 $display("Test | fadd f4 f1 f3 @ End | f4=0x43b31220 | f4=0x%h", _dp._fpu._ff.data[4]);
+	
+		// frc f5 f2
+	
+		next_instruction();
+		fpu_mode <= 1'b1; fpu_frc <= 1'b1; alu_mul <= 1'b1;
+		#80; // +8 Cycles
+		$display("Test | frc f5 f2 @ End | f5=0x3c10fa16 | f5=0x%h", _dp._fpu._ff.data[5]);
+		
+		// fmul f5 f5 f1
+		
+		next_instruction();
+		fpu_mode <= 1'b1; fpu_fmul <= 1'b1; alu_mul <= 1'b1;
+		#5 $display("Test | fmul f5 f5 f1 @ T3 | a=0x3c10fa16, b=0x43b18000, z=0x40490acd | a=0x%h, b=0x%h, z=0x%h", _dp._fpu.fa, _dp._fpu.fb, _dp._fpu.rz);
+		#5 $display("Test | fmul f5 f5 f1 @ End | f5=0x40490acd | f5=0x%h", _dp._fpu._ff.data[5]);
+		
+		// fsub f6 f3 f5
+		
+		next_instruction();
+		fpu_mode <= 1'b1; fpu_fsub <= 1'b1;
+		#5 $display("Test | fsub f6 f3 f5 @ T3 | a=0x40490fdb, b=0x40490acd, z=0x39a1c000 | a=0x%h, b=0x%h, z=0x%h", _dp._fpu.fa, _dp._fpu.fb, _dp._fpu.rz);
+		#5 $display("Test | fsub f6 f3 f5 @ End | f6=0x39a1c000 | f6=0x%h", _dp._fpu._ff.data[6]);
+		
+		// feq r1 f3 f5
+		
+		next_instruction();
+		fpu_mode <= 1'b1; fpu_feq <= 1'b1; rf_in_fpu <= 1'b1;
+		#5 $display("Test | feq r1 f3 f5 @ T3 | a=0x40490fdb, b=0x40490acd, z=0 | a=0x%h, b=0x%h, z=%0b", _dp._fpu.fa, _dp._fpu.fb, _dp._alu.z);
+		#5 $display("Test | feq r1 f3 f5 @ End | r1=0 | r1=%0b", _dp._rf.data[1]);
+		
+		// fgt r2 f6 f0
+		
+		next_instruction();
+		fpu_mode <= 1'b1; fpu_fgt <= 1'b1; rf_in_fpu <= 1'b1;
+		#5 $display("Test | fgt r2 f5 f0 @ T3 | a=0x39a1c000, b=0x00000000, z=0 | a=0x%h, b=0x%h, z=%0b", _dp._fpu.fa, _dp._fpu.fb, _dp._alu.z);
+		#5 $display("Test | fgt r2 f5 f0 @ End | r2=1 | r2=%0b", _dp._rf.data[2]);
+	
 		$finish;
 	end
 endmodule

@@ -1,6 +1,6 @@
 
 SHELL = /bin/bash
-VPATH = hdl hdl/fpu hdl/test
+VPATH = hdl hdl/fpu
 
 OUT  := out
 HDL  := hdl
@@ -92,7 +92,7 @@ $(WORK) :
 $(OUTPUTS) : $(WORK)/%/_primary.vhd : %.v
 	$(VLOG) "$<"
 
-$(OUT)/%.mem : $(ASM)/%.s
+$(OUT)/%.mem : $(ASM)/%.s assembler/main.py
 	mkdir -p $(OUT)
 	$(ASSEMBLER) $< -o $@
 	mkdir -p $(SIMULATION)/$(OUT)
