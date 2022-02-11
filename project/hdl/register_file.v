@@ -1,3 +1,6 @@
+/**
+ * A collection of addressable registers
+ */
 module register_file #(
 	parameter WORDS = 16,
 	parameter BITS = 32,
@@ -13,14 +16,10 @@ module register_file #(
 	input clr
 );
 	wire [BITS - 1:0] data [WORDS - 1:0];
-
-	// r0
-	assign data[0] = 32'b0;
 	
 	genvar i;
 	generate
-		// Ignore r0, as it has a no-op (zero) connection
-		for (i = 1; i < WORDS; i = i + 1) begin : gen_r
+		for (i = 0; i < WORDS; i = i + 1) begin : gen_r
 			register ri ( .q(data_in), .d(data[i]), .clk(clk), .clr(clr), .en(addr_in == i) );
 		end
 	endgenerate
