@@ -36,3 +36,6 @@ mfhi r2
 mflo r2
 out r1
 in r1
+
+.mem 85, 0xdeadbeef
+.mem 35, 0xf000000d
