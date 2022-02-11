@@ -53,10 +53,10 @@ def main():
                         inst = register(ra, 23)
                     elif token in ('noop', 'halt'):
                         inst = 0
-                    elif token in ('fadd', 'fsub', 'fmul', 'frc', 'fgt', 'feq'):
+                    elif token in ('fadd', 'fsub', 'fmul', 'fgt', 'feq'):
                         ra, rb, rc, *_ = tokens
                         inst = register(ra, 23) | register(rb, 19) | register(rc, 15)
-                    elif token in ('mvrf', 'mvfr', 'crf', 'cfr', 'curf', 'cufr'):
+                    elif token in ('frc', 'mvrf', 'mvfr', 'crf', 'cfr', 'curf', 'cufr'):
                         ra, rb, *_ = tokens
                         inst = register(ra, 23) | register(rb, 19)
                     else:

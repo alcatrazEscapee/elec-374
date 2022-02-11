@@ -15,3 +15,10 @@ mvrf f3 r3
 
 // Arithmetic
 fadd f4 f1 f3 // 355 + pi
+frc f5 f2 // f5 = 1.0 / 113
+fmul f5 f5 f1 // f5 = 355 / 113 (a decent pi approximation)
+fsub f6 f3 f5 // f6 = approximation delta
+
+// Compare
+feq r1 f3 f5 // pi == approximation ?
+fgt r2 f6 f0 // delta > 0 ?
