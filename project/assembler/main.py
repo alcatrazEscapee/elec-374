@@ -82,7 +82,9 @@ def main():
                     raise RuntimeError('Broken Line %d:\n%s' % (1 + line_no, line)) from err
                 
                 inst |= opcode(token)
-                lines.append(hex(inst)[2:].zfill(8) + ' // ' + line)
+                inst_str = hex(inst)[2:].zfill(8)
+                bin_str = "0b" + bin(inst)[2:].zfill(32)
+                lines.append(inst_str + ' // ' + line + ' // ' + bin_str)
                 break
             else:
                 raise RuntimeError('Broken Line %d:\n%s\n\nToken=%s' % (1 + line_no, line, token))
