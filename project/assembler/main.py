@@ -59,7 +59,19 @@ def main():
                         else:
                             rb, c = ("r0", other)
                         inst = register(ra, 23) | register(rb, 19) | constant(c)
-                    elif token in ('mfhi', 'mflo', 'in', 'out'):
+                    elif token in ('brzr', 'brnx', 'brpl', 'brmi'):
+                        # only supports literal constants (no labels)
+                        ra, c, *_ = tokens
+                        if 'zr' in token:
+                            c2 = 0
+                        elif 'nx' in token:
+                            c2 = 1
+                        elif 'pl' in token:
+                            c2 = 2
+                        else:
+                            c2 = 3
+                        inst = register(ra, 23) | condition(c2) | constant(c)
+                    elif token in ('mfhi', 'mflo', 'in', 'out', 'jal', 'jr'):
                         ra, *_ = tokens
                         inst = register(ra, 23)
                     elif token in ('noop', 'halt'):
@@ -70,7 +82,7 @@ def main():
                     raise RuntimeError('Broken Line %d:\n%s' % (1 + line_no, line)) from err
                 
                 inst |= opcode(token)
-                lines.append(hex(inst)[2:] + ' // ' + line)
+                lines.append(hex(inst)[2:].zfill(8) + ' // ' + line)
                 break
             else:
                 raise RuntimeError('Broken Line %d:\n%s\n\nToken=%s' % (1 + line_no, line, token))
@@ -87,12 +99,47 @@ def constant(x: str) -> int:
     return int(x) & ((1 << 19) - 1)
 
 def opcode(x: str) -> int:
-    return INSTRUCTIONS.index(x) << 27
+    # default to nop
+    return INSTRUCTIONS.get(x, 25) << 27
 
 def register(x: str, offset: int = 0) -> int:
-        return int(re.search('r([0-9]{1,2})', x).group(1)) << offset
+    return int(re.search('r([0-9]{1,2})', x).group(1)) << offset
 
-INSTRUCTIONS = ['ld', 'ldi', 'st', 'add', 'sub', 'shr', 'shl', 'ror', 'rol', 'and', 'or', 'addi', 'andi', 'ori', 'mul', 'div', 'neg', 'not']
+def condition(x: int) -> int:
+    return x << 19
+
+INSTRUCTIONS = {
+    'ld': 0,
+    'ldi': 1,
+    'st': 2,
+    'add': 3,
+    'sub': 4,
+    'shr': 5,
+    'shl': 6,
+    'ror': 7,
+    'rol': 8,
+    'and': 9,
+    'or': 10,
+    'addi': 11,
+    'andi': 12,
+    'ori': 13,
+    'mul': 14,
+    'div': 15,
+    'neg': 16,
+    'not': 17,
+    'brzr': 18,
+    'brnx': 18,
+    'brpl': 18,
+    'brmi': 18,
+    'jr': 19,
+    'jal': 20,
+    'in': 21,
+    'out': 22,
+    'mfhi': 23,
+    'mflo': 24,
+    'nop': 25,
+    'halt': 26,
+}
 
 if __name__ == '__main__':
     main()
