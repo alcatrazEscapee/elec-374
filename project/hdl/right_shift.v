@@ -9,7 +9,7 @@ module right_shift #(
 	input [BITS - 1:0] in,
 	input [SHIFT_BITS - 1:0] shift,
 	output [BITS - 1:0] out,
-	
+
 	input is_rotate, // If the shifted-off bits should be rotated back on the front
 	output accumulate // If any of the shifted-off bits were '1', this flag is set
 );
@@ -18,13 +18,13 @@ module right_shift #(
 	wire [BITS - 1:0] shifts [DEPTH:0];
 	wire [DEPTH - 1:0] accumulates;
 	wire out_of_bounds;
-	
+
 	assign out_of_bounds = | shift[SHIFT_BITS - 1:DEPTH];
 	assign accumulate = | (out_of_bounds ? in : accumulates);
-	
+
 	assign shifts[0] = in;
 	assign out = out_of_bounds && !is_rotate ? {BITS{1'b0}} : shifts[DEPTH];
-	
+
 	genvar i;
 	generate
 		for (i = 0; i < DEPTH; i = i + 1) begin : gen_shift
@@ -49,7 +49,7 @@ module right_shift_test;
 	right_shift #( .BITS(4) ) _lr ( .in(in), .shift(shift), .out(out_rotate), .is_rotate(1'b1), .accumulate() );
 
 	integer i, j;
-	
+
 	initial begin
 		for (i = 0; i < 16; i = i + 1) begin
 			for (j = 0; j < 5; j = j + 1) begin

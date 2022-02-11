@@ -40,18 +40,18 @@ def main():
                 # e.g. /// .mem 1234 (42 values)
                 lines.append("/// .mem {} ({} values)".format(directive["address"], len(directive["values"])))
                 break
-            elif token in INSTRUCTIONS:
+            elif token in INSTRUCTIONS or token in FPU_INSTRUCTIONS:
                 inst = handle_instruction(token, tokens, line, line_no)
                 lines.append(inst)
                 word_count += 1
                 break
             else:
                 raise RuntimeError('Broken Line %d:\n%s\n\nToken=%s' % (1 + line_no, line, token))
-            
+
         if token in ("", "//"):
             # preserve whitespace
             lines.append(line)
-    
+
     # after parsing and appending instructions, handle directives
     directives.sort(key=lambda x: x.get("address", 0xFF000000))
     for directive in directives:
@@ -79,11 +79,13 @@ def constant(x: str) -> int:
     return int(x) & ((1 << 19) - 1)
 
 def opcode(x: str) -> int:
-    # default to nop
-    return INSTRUCTIONS.get(x, 25) << 27
+    if x in INSTRUCTIONS:
+        return INSTRUCTIONS[x] << 27
+    if x in FPU_INSTRUCTIONS:
+        return (FPU_OPCODE << 27) | FPU_INSTRUCTIONS.index(x)
 
 def register(x: str, offset: int = 0) -> int:
-    return int(re.search('r([0-9]{1,2})', x).group(1)) << offset
+    return int(re.search('[rf]([0-9]{1,2})', x).group(1)) << offset
 
 def condition(x: int) -> int:
     return x << 19
@@ -133,17 +135,23 @@ def handle_instruction(token: str, tokens: List[str], line: str, line_no: int) -
             inst = register(ra, 23)
         elif token in ('noop', 'halt'):
             inst = 0
+        elif token in ('fadd', 'fsub', 'fmul', 'fgt', 'feq'):
+            ra, rb, rc, *_ = tokens
+            inst = register(ra, 23) | register(rb, 19) | register(rc, 15)
+        elif token in ('frc', 'mvrf', 'mvfr', 'crf', 'cfr', 'curf', 'cufr'):
+            ra, rb, *_ = tokens
+            inst = register(ra, 23) | register(rb, 19)
         else:
             raise NotImplementedError('Fixme, line %d:\n%s' % (1 + line_no, line))
     except Exception as err:
         raise RuntimeError('Broken Line %d:\n%s' % (1 + line_no, line)) from err
-    
+
     inst |= opcode(token)
     inst_str = hex(inst)[2:].zfill(8)
     bin_str = "0b" + bin(inst)[2:].zfill(32)
 
     instr_line = inst_str + ' // ' + line + ' // ' + bin_str
-    
+
     return instr_line
 
 def handle_directive(token: str, tokens: List[str], line: str, line_no: int):
@@ -161,6 +169,7 @@ def handle_directive(token: str, tokens: List[str], line: str, line_no: int):
             raise NotImplementedError('Fixme, line %d:\n%s' % (1 + line_no, line))
     except Exception as err:
         raise RuntimeError('Broken Line %d:\n%s' % (1 + line_no, line)) from err
+
 
 INSTRUCTIONS = {
     'ld': 0,
@@ -194,6 +203,9 @@ INSTRUCTIONS = {
     'nop': 25,
     'halt': 26,
 }
+
+FPU_INSTRUCTIONS = ['mvrf', 'mvfr', 'crf', 'cfr', 'curf', 'cufr', 'fadd', 'fsub', 'fmul', 'frc', 'fgt', 'feq']
+FPU_OPCODE = 27
 
 DIRECTIVES = {
     '.mem'

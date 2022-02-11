@@ -4,6 +4,7 @@ VPATH = hdl hdl/fpu
 
 OUT  := out
 HDL  := hdl
+SRC  := src
 ASM  := asm
 WORK := work
 TEST := test
@@ -11,6 +12,7 @@ SIMULATION := simulation/modelsim
 
 VLIB := vlib
 VLOG := vlog +acc
+GCC  := gcc -std=c11
 VSIM := vsim -voptargs=+acc work.%s_test\nrun 10000ns
 ASSEMBLER := python assembler/main.py
 
@@ -19,7 +21,7 @@ ASSEMBLY := $(shell find $(ASM) -name '*.s' -printf '%f ')
 
 OUTPUTS  := $(SOURCES:%.v=$(WORK)/%/_primary.vhd)
 TESTS    := $(SOURCES:%.v=%)
-MEMORY   := $(ASSEMBLY:%.s=$(OUT)/%.mem) 
+MEMORY   := $(ASSEMBLY:%.s=$(OUT)/%.mem)
 
 VSIM_LOG := $(OUT)/vsim.log
 
@@ -53,7 +55,7 @@ clean-outputs :
 	rm -f transcript
 
 .PHONY : compile-all
-compile-all : $(WORK) $(OUTPUTS) $(MEMORY)
+compile-all : $(WORK) $(OUTPUTS) $(MEMORY) $(OUT)/fpu.o
 	@mkdir -p $(OUT)
 	@echo start > $(VSIM_LOG)
 	-@for mod in $(TESTS) ; do \
@@ -66,7 +68,7 @@ all : compile-all
 	@python test/setup.py $(VSIM_LOG)
 	
 .PHONY : run
-run : $(WORK) $(OUTPUTS) $(MEMORY)
+run : $(WORK) $(OUTPUTS) $(MEMORY) $(OUT)/fpu.o
 	@mkdir -p $(OUT)
 	-@if [ "$(mod)" = "" ]; then \
 		echo "No module provided - try with make mod=foo" ; \
@@ -75,6 +77,14 @@ run : $(WORK) $(OUTPUTS) $(MEMORY)
 		printf "$(VSIM)" $(mod) | vsim > $(VSIM_LOG); \
 		python test/setup.py $(VSIM_LOG); \
 	fi
+
+.PHONY : constants
+constants : out/constants.o
+	./out/constants.o
+
+$(OUT)/%.o : $(SRC)/%.c
+	mkdir -p $(OUT)
+	$(GCC) $< -o $@
 
 $(WORK) :
 	$(VLIB) $(WORK)

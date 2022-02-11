@@ -3,17 +3,23 @@
 !/.gitignore
 !/.editorconfig
 !/README.md
+!/project/assembler/README.md
 
 !/.github/**/*.yml
 
 !/docs/**/*.pdf
 
 !/project/Makefile
-!/project/asm/**/*.s
+
 !/project/assembler/main.py
-!/project/assembler/README.md
-!/project/hdl/**/*.v
 !/project/test/setup.py
+
+!/project/src/**/*.c
+!/project/src/**/*.h
+
+!/project/asm/**/*.s
+
+!/project/hdl/**/*.v
 !/project/cpu.qpf
 !/project/cpu.qsf
 !/project/cpu.sdc
