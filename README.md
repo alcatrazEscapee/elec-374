@@ -154,13 +154,13 @@ Conditional Branch: `br<condition> rX, C`
 
 - T3 `if condition(rX) PC <- PC + C`
 
-Jump (Return): `jr`
+Jump (Return): `jr rX`
 
-- T3 `PC <- r15`
+- T3 `PC <- rX`
 
 Jump And Link (Call): `jal rX`
 
-- T3 `r15 <- PC + 1`, `PC <- rX`
+- T3 `r15 <- PC`, `PC <- rX`
 
 
 ### Testing

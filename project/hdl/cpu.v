@@ -77,9 +77,10 @@ module cpu (
 	
 	// Map rA, rB, and rC wires to the register file write address, read address A and B, respectively
 	// mul and div have two parameter registers in rA and rB, that need to map to address A and B
-	// Branch instructions use rA as a read register, not as a write one.
-	assign rf_z_addr = ir_ra;
-	assign rf_a_addr = (ir_opcode == 5'b10010 || ir_opcode == 5'b01110 || ir_opcode == 5'b01111) ? ir_ra : ir_rb_or_c2;
+	// Branch, jr, and jal instructions use rA as a read register, not as a write one.
+	// jal has rf_z_addr hard-wired to r15 (0xf)
+	assign rf_z_addr = (ir_opcode == 5'b10100) ? 4'b1111 : ir_ra;
+	assign rf_a_addr = (ir_opcode == 5'b10010 || ir_opcode == 5'b01110 || ir_opcode == 5'b01111 || ir_opcode == 5'b10011 || ir_opcode == 5'b10100) ? ir_ra : ir_rb_or_c2;
 	assign rf_b_addr = (ir_opcode == 5'b00010) ? ir_ra : (ir_opcode == 5'b01110 || ir_opcode == 5'b01111) ? ir_rb_or_c2 : ir_rc;
 	
 	// Evaluate the branch condition based on C2
@@ -504,7 +505,6 @@ module cpu_test;
 		
 		// Reset PC after last branch (brnz r2 -36 @ pc = 60 = 0x3c)
 		next_instruction(60, "brnz r2 -36", 32'h910fffdc);
-		// T3
 		alu_a_in_pc <= 1'b1; alu_b_in_constant <= 1'b1; pc_in_alu <= branch_condition; alu_add <= 1'b1;
 		#5; $display("Test | brnz r2 -36 @ <T3 | a=0x0000003d, b=0xffffffdc, z=0x00000019 | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5; $display("Test | brnz r2 -36 @ >T3 | br_cond=0x1, pc=0x00000019 | br_cond=0x%h, pc=0x%h", branch_condition, _cpu._pc.d);
@@ -521,7 +521,6 @@ module cpu_test;
 		
 		// Reset PC after last branch (brpl r2 -36 @ pc = 61 = 0x3d)
 		next_instruction(61, "brpl r2 -36", 32'h9117ffdc);
-		// T3
 		alu_a_in_pc <= 1'b1; alu_b_in_constant <= 1'b1; pc_in_alu <= branch_condition; alu_add <= 1'b1;
 		#5; $display("Test | brpl r2 -36 @ <T3 | a=0x0000003e, b=0xffffffdc, z=0x0000001a | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5; $display("Test | brpl r2 -36 @ >T3 | br_cond=0x1, pc=0x0000001a | br_cond=0x%h, pc=0x%h", branch_condition, _cpu._pc.d);
@@ -535,6 +534,48 @@ module cpu_test;
 		alu_a_in_pc <= 1'b1; alu_b_in_constant <= 1'b1; pc_in_alu <= branch_condition; alu_add <= 1'b1;
 		#5; $display("Test | brmi r2 35 @ <T3 | a=0x0000001b, b=0x00000023, z=0x0000003e | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5; $display("Test | brmi r2 35 @ >T3 | br_cond=0x0, pc=0x0000001b | br_cond=0x%h, pc=0x%h", branch_condition, _cpu._pc.d);
+		
+		
+		// Non-test instruction, to set up r1 for next jr r1 (ldi r1, 62)
+		next_instruction(27, "ldi r1, 62", 32'h0880003e);
+		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
+		#5; $display("Test | ldi r1 62 @ <T3 | a=0x00000000, b=0x0000003e, z=0x0000003e | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
+		#5; $display("Test | ldi r1 62 @ >T3 | r1=0x0000003e | r1=0x%h", _cpu._rf.data[1]);
+		
+		// jal r1
+		next_instruction(28, "jal r1", 32'ha0800000);
+		
+		// T3
+		// Two things happen: PC <- rX, and r15 <- PC.
+		// Latter step must go through alu, so if we don't set alu_b_in_x, default to 32'b0
+		pc_in_rf_a <= 1'b1;
+		alu_a_in_pc <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
+		#5; $display("Test | jal r1 @ <T3 | a=0x0000001d, b=0x00000000, z=0x0000001d | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
+		#5; $display("Test | jal r1 @ >T3 | r15=0x0000001d, rf_a_out=0x0000003e, pc=0x0000003e | r15=0x%h, rf_a_out=0x%h, pc=0x%h", _cpu._rf.data[15], _cpu.rf_a_out, _cpu._pc.d);
+		
+		
+		// jr r1
+		next_instruction(62, "jr r1", 32'h9f800000);
+		
+		// T3
+		pc_in_rf_a <= 1'b1;
+		#10; $display("Test | jr r1 @ T3 | rf_a_out=0x0000001d, pc=0x0000001d | rf_a_out=0x%h, pc=0x%h", _cpu.rf_a_out, _cpu._pc.d);
+		
+		
+		// mfhi r2
+		next_instruction(29, "mfhi r2", 32'hb9000000);
+		
+		// T3
+		rf_in_hi <= 1'b1;
+		#10; $display("Test | mfhi r2 @ T3 | r2=0x00000019 | r2=0x%h", _cpu._rf.data[2]);
+		
+		
+		// mfhi r2
+		next_instruction(30, "mflo r2", 32'hc1000000);
+		
+		// T3
+		rf_in_lo <= 1'b1;
+		#10; $display("Test | mflo r2 @ T3 | r2=0x00000001 | r2=0x%h", _cpu._rf.data[2]);
 		
 		$finish;
 	end

@@ -30,8 +30,8 @@ brzr r2, 35
 brnz r2, 35 // Will branch to 60
 brpl r2, 35 // Will branch to 61
 brmi r2, 35
-jr r1
-jal r1
+ldi r1, 62 // Non-test instruction, just to set r1 to 62 before jr
+jal r1 // Will jump to 62
 mfhi r2
 mflo r2
 out r1
@@ -39,5 +39,6 @@ in r1
 
 .inst 60 brnz r2, -36 // Will branch back to 25
 .inst 61 brpl r2, -36 // Will branch back to 26
+.inst 62 jr r15 // Jump return
 .mem 85, 10
 .mem 45, 0xdeadbeef
