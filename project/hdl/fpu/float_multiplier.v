@@ -21,9 +21,9 @@ module float_multiplier (
 	// Handle special cases of NaN, Infinity, and Zero
 	always @(*) begin
 		casez ({1'b0, fa[30:0], 1'b0, fb[30:0]}) // Ignore the sign bit for now
-			// NaN * NaN = NaN
-			// Output is negative only if both inputs are negative.
-			64'h7fc00000_7fc00000 : fz = {sa & sb, 31'h7fc00000};
+			// NaN + Anything or Anything + NaN = NaN
+			64'h7fc00000_????????,
+			64'h????????_7fc00000 : fz = 32'h7fc00000;
 			// NaN * Anything or Anything * NaN
 			// Output the NaN input exactly (copy the sign)
 			64'h7fc00000_???????? : fz = fa;
