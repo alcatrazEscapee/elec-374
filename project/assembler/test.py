@@ -31,7 +31,7 @@ class AssemblerTest(unittest.TestCase):
     def test_andi(self): self.asm('andi r2, r1, 26', '01100 0010 0001 0000000000000011010')
     def test_ori(self): self.asm('ori r2, r1, 26', '01101 0010 0001 0000000000000011010')
     def test_brzr(self): self.asm('brzr r2, 35', '10010 0010 0000 0000000000000100011')
-    def test_brnx(self): self.asm('brnx r2, 35', '10010 0010 0001 0000000000000100011')
+    def test_brnz(self): self.asm('brnz r2, 35', '10010 0010 0001 0000000000000100011')
     def test_brpl(self): self.asm('brpl r2, 35', '10010 0010 0010 0000000000000100011')
     def test_brmi(self): self.asm('brmi r2, 35', '10010 0010 0011 0000000000000100011')
     def test_jr(self): self.asm('jr r1', '10011 0001 00000000000000000000000')

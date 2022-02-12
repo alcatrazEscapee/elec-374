@@ -27,8 +27,8 @@ addi r2, r1, -5
 andi r2, r1, 26
 ori r2, r1, 26
 brzr r2, 35
-brnx r2, 35
-brpl r2, 35
+brnz r2, 35 // Will branch to 60
+brpl r2, 35 // Will branch to 61
 brmi r2, 35
 jr r1
 jal r1
@@ -37,5 +37,7 @@ mflo r2
 out r1
 in r1
 
+.inst 60 brnz r2, -36 // Will branch back to 25
+.inst 61 brpl r2, -36 // Will branch back to 26
 .mem 85, 10
 .mem 45, 0xdeadbeef
