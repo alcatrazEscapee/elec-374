@@ -9,12 +9,17 @@ module cpu (
 	input alu_b_in_rf, input alu_b_in_constant,
 	input lo_en,
 	input hi_en,
-	input rf_in_alu, input rf_in_hi, input rf_in_lo, input rf_in_memory, input rf_in_fpu,
+	input rf_in_alu, input rf_in_hi, input rf_in_lo, input rf_in_memory, input rf_in_fpu, input rf_in_input,
+	input input_en, output_en,
 	input memory_en,
 
 	input [11:0] alu_select,
 	input [11:0] fpu_select,
 	input fpu_mode, // 0 = ALU, 1 = FPU
+	
+	// I/O
+	input [31:0] input_in,
+	input [31:0] output_out,
 	
 	// To Control Logic
 	output [31:0] ir_out,
@@ -28,7 +33,7 @@ module cpu (
 	// Based on the 3-Bus Architecture
 	// We can exclude the A, B, Y and Z registers
 	// Memory has a built-in MD register (in inferred Quartus memory), so we exclude that as well
-	wire [31:0] pc_out, ma_out, hi_out, lo_out, rf_a_out, rf_b_out, alu_z_out, alu_lo_out, alu_hi_out, constant_c, fpu_bridge_alu_a, fpu_bridge_alu_b, fpu_rz_out;
+	wire [31:0] pc_out, ma_out, hi_out, lo_out, rf_a_out, rf_b_out, alu_z_out, alu_lo_out, alu_hi_out, constant_c, input_out, fpu_bridge_alu_a, fpu_bridge_alu_b, fpu_rz_out;
 	reg [31:0] pc_in, ma_in, alu_a_in, alu_b_in, rf_in;
 	
 	wire pc_en, ma_en, rf_en;
@@ -77,10 +82,10 @@ module cpu (
 	
 	// Map rA, rB, and rC wires to the register file write address, read address A and B, respectively
 	// mul and div have two parameter registers in rA and rB, that need to map to address A and B
-	// Branch, jr, and jal instructions use rA as a read register, not as a write one.
+	// Branch, jr, jal, and out instructions use rA as a read register, not as a write one.
 	// jal has rf_z_addr hard-wired to r15 (0xf)
 	assign rf_z_addr = (ir_opcode == 5'b10100) ? 4'b1111 : ir_ra;
-	assign rf_a_addr = (ir_opcode == 5'b10010 || ir_opcode == 5'b01110 || ir_opcode == 5'b01111 || ir_opcode == 5'b10011 || ir_opcode == 5'b10100) ? ir_ra : ir_rb_or_c2;
+	assign rf_a_addr = (ir_opcode == 5'b10010 || ir_opcode == 5'b01110 || ir_opcode == 5'b01111 || ir_opcode == 5'b10011 || ir_opcode == 5'b10100 || ir_opcode == 5'b10110) ? ir_ra : ir_rb_or_c2;
 	assign rf_b_addr = (ir_opcode == 5'b00010) ? ir_ra : (ir_opcode == 5'b01110 || ir_opcode == 5'b01111) ? ir_rb_or_c2 : ir_rc;
 	
 	// Evaluate the branch condition based on C2
@@ -127,16 +132,17 @@ module cpu (
 	end
 	
 	// RF Inputs
-	// Input can by any of ALU Z, HI, LO, Memory, or FPU
-	assign rf_en = rf_in_alu | rf_in_hi | rf_in_lo | rf_in_memory | rf_in_fpu;
+	// Input can by any of ALU Z, HI, LO, Memory, INPUT, or FPU
+	assign rf_en = rf_in_alu | rf_in_hi | rf_in_lo | rf_in_memory | rf_in_input | rf_in_fpu;
 	
 	always @(*) begin
-		case ({rf_in_fpu, rf_in_alu, rf_in_hi, rf_in_lo, rf_in_memory})
-			5'b00001 : rf_in <= memory_out;
-			5'b00010 : rf_in <= lo_out;
-			5'b00100 : rf_in <= hi_out;
-			5'b01000 : rf_in <= alu_z_out;
-			5'b10000 : rf_in <= fpu_rz_out;
+		case ({rf_in_input, rf_in_fpu, rf_in_alu, rf_in_hi, rf_in_lo, rf_in_memory})
+			6'b000001 : rf_in <= memory_out;
+			6'b000010 : rf_in <= lo_out;
+			6'b000100 : rf_in <= hi_out;
+			6'b001000 : rf_in <= alu_z_out;
+			6'b010000 : rf_in <= fpu_rz_out;
+			6'b100000 : rf_in <= input_out;
 			default : rf_in <= 32'b0;
 		endcase
 	end
@@ -170,11 +176,13 @@ module cpu (
 		.clr(clr)
 	);
 	
-	register _pc ( .q(pc_in),      .d(pc_out), .en(pc_en), .clk(clk), .clr(clr) );
-	register _ir ( .q(memory_out), .d(ir_out), .en(ir_en), .clk(clk), .clr(clr) ); // IR in = Memory
-	register _ma ( .q(ma_in),      .d(ma_out), .en(ma_en), .clk(clk), .clr(clr) );
-	register _hi ( .q(alu_hi_out), .d(hi_out), .en(hi_en), .clk(clk), .clr(clr) ); // HI and LO in = ALU out
-	register _lo ( .q(alu_lo_out), .d(lo_out), .en(lo_en), .clk(clk), .clr(clr) );
+	register _pc  ( .q(pc_in),      .d(pc_out),     .en(pc_en),     .clk(clk), .clr(clr) );
+	register _ir  ( .q(memory_out), .d(ir_out),     .en(ir_en),     .clk(clk), .clr(clr) ); // IR in = Memory
+	register _ma  ( .q(ma_in),      .d(ma_out),     .en(ma_en),     .clk(clk), .clr(clr) );
+	register _hi  ( .q(alu_hi_out), .d(hi_out),     .en(hi_en),     .clk(clk), .clr(clr) ); // HI and LO in = ALU out
+	register _lo  ( .q(alu_lo_out), .d(lo_out),     .en(lo_en),     .clk(clk), .clr(clr) );
+	register _in  ( .q(input_in),   .d(input_out),  .en(input_en),  .clk(clk), .clr(clr) ); // IN and OUT
+	register _out ( .q(rf_a_out),   .d(output_out), .en(output_en), .clk(clk), .clr(clr) );
 	
 	alu _alu ( .a(alu_a_in), .b(alu_b_in), .z(alu_z_out), .hi(alu_hi_out), .lo(alu_lo_out), .select(alu_select) );
 	
@@ -203,13 +211,16 @@ module cpu_test;
 	reg alu_a_in_rf, alu_a_in_pc;
 	reg alu_b_in_rf, alu_b_in_constant;
 	reg lo_en, hi_en;
-	reg rf_in_alu, rf_in_hi, rf_in_lo, rf_in_memory;
+	reg rf_in_alu, rf_in_hi, rf_in_lo, rf_in_memory, rf_in_input;
+	reg input_en, output_en;
 	reg memory_en;
 		
 	reg alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add;
 	
 	wire [31:0] ir_out;
 	wire branch_condition;
+	
+	reg [31:0] input_in, output_out;
 	
 	reg clk, clr;
 	
@@ -220,12 +231,14 @@ module cpu_test;
 		.alu_a_in_rf(alu_a_in_rf), .alu_a_in_pc(alu_a_in_pc),
 		.alu_b_in_rf(alu_b_in_rf), .alu_b_in_constant(alu_b_in_constant),
 		.lo_en(lo_en), .hi_en(hi_en),
-		.rf_in_alu(rf_in_alu), .rf_in_hi(rf_in_hi), .rf_in_lo(rf_in_lo), .rf_in_memory(rf_in_memory), .rf_in_fpu(1'b0),
+		.rf_in_alu(rf_in_alu), .rf_in_hi(rf_in_hi), .rf_in_lo(rf_in_lo), .rf_in_memory(rf_in_memory), .rf_in_fpu(1'b0), .rf_in_input(rf_in_input),
 		.alu_select({alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add}),
 		.fpu_select(12'b0), .fpu_mode(1'b0), // Disable FPU
 		.ir_out(ir_out), .clk(clk), .clr(clr),
+		.input_en(input_en), .output_en(output_en),
 		.memory_en(memory_en),
-		.branch_condition(branch_condition)
+		.branch_condition(branch_condition),
+		.input_in(input_in), .output_out(output_out)
 	);
 	
 	/**
@@ -239,7 +252,8 @@ module cpu_test;
 			alu_a_in_rf <= 1'b0; alu_a_in_pc <= 1'b0;
 			alu_b_in_rf <= 1'b0; alu_b_in_constant <= 1'b0;
 			lo_en <= 1'b0; hi_en <= 1'b0;
-			rf_in_alu <= 1'b0; rf_in_hi <= 1'b0; rf_in_lo <= 1'b0; rf_in_memory <= 1'b0;
+			rf_in_alu <= 1'b0; rf_in_hi <= 1'b0; rf_in_lo <= 1'b0; rf_in_memory <= 1'b0; rf_in_input <= 1'b0;
+			input_en <= 1'b0; output_en <= 1'b0;
 			memory_en <= 1'b0;
 			{alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add} <= 12'b0;
 		end
@@ -300,6 +314,11 @@ module cpu_test;
 		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
 		#5 $display("Test | addi r4 r0 28 @ <T3 | a=0, b=28, z=28 | a=%0d, b=%0d, z=%0d", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5 $display("Test | addi r4 r0 28 @ >T3 | r4=28 | r4=%0d", _cpu._rf.data[4]);
+		
+		// Initialize INPUT to something
+		input_in <= 32'h55555555; input_en <= 1'b1;
+		#10; $display("Test | init input | input_out=0x55555555 | input_out=0x%h", _cpu._in.d);
+		control_reset();
 		
 		// ================== PHASE 1 ============================ //
 		
@@ -554,12 +573,12 @@ module cpu_test;
 		#5; $display("Test | jal r1 @ >T3 | r15=0x0000001d, rf_a_out=0x0000003e, pc=0x0000003e | r15=0x%h, rf_a_out=0x%h, pc=0x%h", _cpu._rf.data[15], _cpu.rf_a_out, _cpu._pc.d);
 		
 		
-		// jr r1
-		next_instruction(62, "jr r1", 32'h9f800000);
+		// jr r15
+		next_instruction(62, "jr r15", 32'h9f800000);
 		
 		// T3
 		pc_in_rf_a <= 1'b1;
-		#10; $display("Test | jr r1 @ T3 | rf_a_out=0x0000001d, pc=0x0000001d | rf_a_out=0x%h, pc=0x%h", _cpu.rf_a_out, _cpu._pc.d);
+		#10; $display("Test | jr r15 @ T3 | rf_a_out=0x0000001d, pc=0x0000001d | rf_a_out=0x%h, pc=0x%h", _cpu.rf_a_out, _cpu._pc.d);
 		
 		
 		// mfhi r2
@@ -576,6 +595,24 @@ module cpu_test;
 		// T3
 		rf_in_lo <= 1'b1;
 		#10; $display("Test | mflo r2 @ T3 | r2=0x00000001 | r2=0x%h", _cpu._rf.data[2]);
+		
+		
+		// out r1
+		next_instruction(31, "out r1", 32'hb0800000);
+		
+		// T3
+		output_en <= 1'b1;
+		#10; $display("Test | out r1 @ T3 | r1=0x0000003e, output_out=0x0000003e | r1=0x%h, output_out=0x%h", _cpu._rf.data[1], _cpu._out.d);
+		
+		
+		// in r1
+		next_instruction(32, "in r1", 32'ha8800000);
+		
+		// T3
+		rf_in_input <= 1'b1;
+		#5; $display("Test | in r1 @ <T3 | input_out=0x55555555 | input_out=0x%h", _cpu._in.d);
+		#5; $display("Test | in r1 @ >T3 | r1=0x55555555 | r1=0x%h", _cpu._rf.data[1]);
+		
 		
 		$finish;
 	end
