@@ -30,7 +30,7 @@ Index | Opcode | Name | Assembly | RTN
 ---|---|---|---|---
 0 | `00000` | Load | `ld rA, C(rB)` | `rA <- Memory[rB + C]`
 1 | `00001` | Load Immediate | `ldi rA, C(rB)` | `rA <- rB + C`
-2 | `00010` | Store | `st rA, C(rB)` | `Memory[rB + C] <- rA`
+2 | `00010` | Store | `st C(rB), rA` | `Memory[rB + C] <- rA`
 3 | `00011` | Add | `add rA, rB, rC` | `rA <- rB + rC`
 4 | `00100` | Subtract | `sub rA, rB, rC` | `rA <- rB - rC`
 5 | `00101` | Shift Right | `shr rA, rB, rC` | `rA <- rB >> rC`
@@ -145,14 +145,14 @@ Load: `ld rX, C(rY)`
 - T4 Memory Read
 - T5 `rX <- Memory[MA]`
 
-Store: `st rX, C(rY)`
+Store: `st C(rY), rX`
 
 - T3 `MA <- rY + C`
 - T4 `Memory[MA] <- rX`, Memory Write
 
 Conditional Branch: `br<condition> rX, C`
 
-- T3 `if condition(rX) PC <- PC - 1 + C`
+- T3 `if condition(rX) PC <- PC + C`
 
 Jump (Return): `jr`
 

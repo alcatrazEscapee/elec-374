@@ -31,7 +31,7 @@ def main(args: Namespace):
 
 def assemble(text: str) -> List[str]:
     # Did I mention this was insanely primitive yet?
-    word_count = 0
+    global_addr = 0
     lines = []
     directives = []
     for line_no, line in enumerate(text.split('\n')):
@@ -44,15 +44,14 @@ def assemble(text: str) -> List[str]:
             elif token == '//':
                 break  # comment
             elif token in DIRECTIVES:
-                directive = handle_directive(token, tokens, line, line_no)
+                directive, comment = handle_directive(token, tokens, line, line_no, global_addr)
                 directives.append(directive)
-                # e.g. /// .mem 1234 (42 values)
-                lines.append("/// .mem {} ({} values)".format(directive["address"], len(directive["values"])))
+                lines.append(comment)
                 break
             elif token in INSTRUCTIONS or token in FPU_INSTRUCTIONS:
-                inst = handle_instruction(token, tokens, line, line_no)
+                inst = handle_instruction(token, tokens, line, line_no, global_addr)
                 lines.append(inst)
-                word_count += 1
+                global_addr += 1
                 break
             else:
                 raise RuntimeError('Broken Line %d:\n%s\n\nToken=%s' % (1 + line_no, line, token))
@@ -64,24 +63,25 @@ def assemble(text: str) -> List[str]:
     # after parsing and appending instructions, handle directives
     directives.sort(key=lambda x: x.get("address", 0xFF000000))
     for directive in directives:
-        address = directive.get("address", 0xFF000000)
+        dir_addr = directive.get("address", 0xFF000000)
         values = directive.get("values", [])
 
         # calculate padding
-        diff = address - word_count
+        diff = dir_addr - global_addr
         assert diff >= 0, 'Overlapping memory values and assembly!'
-        lines.extend(["00000000"] * diff)
+        lines.extend(["00000000 // {:03d}".format(addr) for addr in range (global_addr, dir_addr)])
 
         # write values
-        str_values = [hex(x)[2:].zfill(8) for x in values]
+        # if a value is a string, append as-is. Otherwise, convert to hex, fill, and append address comment
+        str_values = ["{} // {:03d}".format(hex(x[1])[2:].zfill(8), x[0]) if type(x[1]) == int else x[1] for x in enumerate(values, global_addr + diff)]
         lines.extend(str_values)
 
         # update word count
-        word_count += len(values) + diff
+        global_addr += len(values) + diff
 
     return lines
 
-def handle_instruction(token: str, tokens: List[str], line: str, line_no: int) -> str:
+def handle_instruction(token: str, tokens: List[str], line: str, line_no: int, addr: int) -> str:
     try:
         if token in ('add', 'sub', 'shr', 'shl', 'ror', 'rol', 'and', 'or'):
             ra, rb, rc, *_ = tokens
@@ -106,10 +106,10 @@ def handle_instruction(token: str, tokens: List[str], line: str, line_no: int) -
             else:
                 rb, c = ("r0", other)
             inst = register(ra, 23) | register(rb, 19) | constant(c)
-        elif token in ('brzr', 'brnx', 'brpl', 'brmi'):
+        elif token in ('brzr', 'brnz', 'brpl', 'brmi'):
             # only supports literal constants (no labels)
             ra, c, *_ = tokens
-            c2 = ['zr', 'nx', 'pl', 'mi'].index(token[2:])
+            c2 = ['zr', 'nz', 'pl', 'mi'].index(token[2:])
             inst = register(ra, 23) | condition(c2) | constant(c)
         elif token in ('mfhi', 'mflo', 'in', 'out', 'jal', 'jr'):
             ra, *_ = tokens
@@ -128,19 +128,36 @@ def handle_instruction(token: str, tokens: List[str], line: str, line_no: int) -
         raise RuntimeError('Broken Line %d:\n%s' % (1 + line_no, line)) from err
 
     inst |= opcode(token)
-    return hex(inst)[2:].zfill(8) + ' // ' + line
+    inst_str = hex(inst)[2:].zfill(8)
+    return  "{} // {:03d}: {}".format(inst_str, addr, line)
 
-def handle_directive(token: str, tokens: List[str], line: str, line_no: int):
+def handle_directive(token: str, tokens: List[str], line: str, line_no: int, addr: int):
     try:
+        # remove extra whitespace
+        tokens = [x for x in tokens if x != '']
         if token == '.mem':
-            # remove extra whitespace
-            tokens = [x for x in tokens if x != '']
+            # Note: .mem returns int values, so comments inserted later
             addr, *values = tokens
 
             addr = eval(addr) & ((1 << 32) - 1)
             values = [eval(x) & ((1 << 32) - 1) for x in values]
+            
+            # e.g. /// .mem 1234 (42 values)
+            comment = "/// {} {} ({} values)".format(token, addr, len(values))
 
-            return { 'address': addr, 'values': values }
+            return { 'address': addr, 'values': values }, comment
+        elif token == '.inst':
+            # Note: .inst returns str result of handle_instruction, which includes the address in comment
+            addr, *inst_tokens = tokens
+
+            addr = eval(addr) & ((1 << 32) - 1)
+            inst_token = inst_tokens.pop(0)
+            inst = handle_instruction(inst_token, inst_tokens, line, line_no, addr)
+            
+            # e.g. /// .inst 1234 (91000023 // brzr r2, 35)
+            comment = "/// {} {} ({})".format(token, addr, inst)
+
+            return { 'address': addr, 'values': [inst] }, comment
         else:
             raise NotImplementedError('Fixme, line %d:\n%s' % (1 + line_no, line))
     except Exception as err:
@@ -183,7 +200,7 @@ INSTRUCTIONS = {
     'neg': 16,
     'not': 17,
     'brzr': 18,
-    'brnx': 18,
+    'brnz': 18,
     'brpl': 18,
     'brmi': 18,
     'jr': 19,
@@ -200,7 +217,8 @@ FPU_INSTRUCTIONS = ['mvrf', 'mvfr', 'crf', 'cfr', 'curf', 'cufr', 'fadd', 'fsub'
 FPU_OPCODE = 27
 
 DIRECTIVES = {
-    '.mem'
+    '.mem',
+    '.inst',
 }
 
 if __name__ == '__main__':
