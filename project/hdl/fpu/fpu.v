@@ -135,10 +135,12 @@ module fpu_test;
 		.alu_a_in_rf(alu_a_in_rf), .alu_a_in_pc(alu_a_in_pc),
 		.alu_b_in_rf(alu_b_in_rf), .alu_b_in_constant(alu_b_in_constant),
 		.lo_en(lo_en), .hi_en(hi_en),
-		.rf_in_alu(rf_in_alu), .rf_in_hi(rf_in_hi), .rf_in_lo(rf_in_lo), .rf_in_memory(rf_in_memory), .rf_in_fpu(rf_in_fpu),
+		.rf_in_alu(rf_in_alu), .rf_in_hi(rf_in_hi), .rf_in_lo(rf_in_lo), .rf_in_memory(rf_in_memory), .rf_in_fpu(rf_in_fpu), .rf_in_input(1'b0),
+		.input_en(1'b0), .output_en(1'b0),
 		.alu_select({alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add}),
 		.fpu_select({fpu_feq, fpu_fgt, fpu_frc, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf, fpu_mvfr, fpu_mvrf}),
 		.fpu_mode(fpu_mode),
+		.input_in(32'b0), .output_out(),
 		.ir_out(ir_out), .clk(clk), .clr(clr),
 		.memory_en(memory_en),
 		.branch_condition(branch_condition)
