@@ -51,4 +51,4 @@ jobs:
       run: python ./test/setup.py ./out/vsim.log
     - name: Run Assembler Tests
       working-directory: ./project
-      run: python ./assembler/test.py
+      run: make assembler

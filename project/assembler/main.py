@@ -6,7 +6,7 @@
 import re
 
 from argparse import ArgumentParser, Namespace
-from typing import List
+from typing import List, Tuple, Dict
 
 
 def parse_command_line_args() -> Namespace:
@@ -29,60 +29,78 @@ def main(args: Namespace):
         for line in lines:
             f.write(line + '\n')
 
-def assemble(text: str) -> List[str]:
-    # Did I mention this was insanely primitive yet?
-    global_addr = 0
-    lines = []
-    directives = []
-    for line_no, line in enumerate(text.split('\n')):
-        tokens = line.replace(',', '').split(' ')
-        while tokens:
-            inst = None
-            token = tokens.pop(0)
-            if token == '':
-                pass
-            elif token == '//':
-                break  # comment
-            elif token in DIRECTIVES:
-                directive, comment = handle_directive(token, tokens, line, line_no, global_addr)
-                directives.append(directive)
-                lines.append(comment)
-                break
-            elif token in INSTRUCTIONS or token in FPU_INSTRUCTIONS:
-                inst = handle_instruction(token, tokens, line, line_no, global_addr)
-                lines.append(inst)
-                global_addr += 1
-                break
+
+def assemble(text: str):
+    return Assembler(text).try_assemble()
+
+class Assembler:
+
+    def __init__(self, text: str):
+        self.text: str = text
+        self.lines: List[str] = text.split('\n')
+        self.output: Dict[int, Tuple[int, str, str]] = {}  # code point -> (instruction, comment, label)
+        self.labels: Dict[str, int] = {}  # label -> code point
+        self.line_no: int = 0
+        self.line: str = ''
+        self.code_point: int = 0
+
+    def try_assemble(self) -> List[str]:
+        try:
+            self.assemble()
+        except Exception as e:
+            raise RuntimeError('%s\nAt line %d:\n%s' % (e, 1 + self.line_no, self.line))
+        
+        for _, _, label in self.output.values():
+            if label is not None and label not in self.labels:
+                raise RuntimeError('Undefined label: %s' % label)
+        
+        lines = []
+        reverse_labels = {i: label for label, i in self.labels.items()}
+        for i in range(1 + max(self.output.keys())):
+            if i in self.output:
+                code, comment, label = self.output[i]
+                if label is not None:
+                    code |= (self.labels[label] - i - 1) & ((1 << 19) - 1)
+                if i in reverse_labels:
+                    comment = '%s: %s' % (reverse_labels[i], comment.strip())
+                lines.append('%s // %03d : %s' % (hex(code)[2:].zfill(8), i, comment.strip()))
             else:
-                raise RuntimeError('Broken Line %d:\n%s\n\nToken=%s' % (1 + line_no, line, token))
+                lines.append('00000000 // %03d' % i)
+        
+        return lines
 
-        if token in ("", "//"):
-            # preserve whitespace
-            lines.append(line)
-
-    # after parsing and appending instructions, handle directives
-    directives.sort(key=lambda x: x.get("address", 0xFF000000))
-    for directive in directives:
-        dir_addr = directive.get("address", 0xFF000000)
-        values = directive.get("values", [])
-
-        # calculate padding
-        diff = dir_addr - global_addr
-        assert diff >= 0, 'Overlapping memory values and assembly!'
-        lines.extend(["00000000 // {:03d}".format(addr) for addr in range (global_addr, dir_addr)])
-
-        # write values
-        # if a value is a string, append as-is. Otherwise, convert to hex, fill, and append address comment
-        str_values = ["{} // {:03d}".format(hex(x[1])[2:].zfill(8), x[0]) if type(x[1]) == int else x[1] for x in enumerate(values, global_addr + diff)]
-        lines.extend(str_values)
-
-        # update word count
-        global_addr += len(values) + diff
-
-    return lines
-
-def handle_instruction(token: str, tokens: List[str], line: str, line_no: int, addr: int) -> str:
-    try:
+    def assemble(self):
+        for line_no, line in enumerate(self.lines):
+            self.line_no = line_no
+            self.line = line
+            
+            tokens = line.replace(',', '').split(' ')
+            while tokens:
+                token = tokens.pop(0)
+                if token == '':
+                    pass
+                elif token == '//':
+                    break  # comment
+                elif match := re.match('([A-Za-z0-9-_]+):', token):
+                    self.labels[match.group(1)] = self.code_point
+                elif token == '.org':
+                    point, *_ = tokens
+                    self.code_point = eval(point)
+                    break
+                elif token == '.mem':
+                    first = True
+                    for word in tokens:
+                        self.append(eval(word), '.mem [%d words]' % len(tokens) if first else '')
+                        first = False
+                    break
+                elif token in INSTRUCTIONS or token in FPU_INSTRUCTIONS:
+                    self.instruction(token, tokens)
+                    break
+                else:
+                    self.error('Unknown token: %s' % token)
+    
+    def instruction(self, token: str, tokens: List[str]) -> str:
+        label = None
         if token in ('add', 'sub', 'shr', 'shl', 'ror', 'rol', 'and', 'or'):
             ra, rb, rc, *_ = tokens
             inst = register(ra, 23) | register(rb, 19) | register(rc, 15)
@@ -107,10 +125,12 @@ def handle_instruction(token: str, tokens: List[str], line: str, line_no: int, a
                 rb, c = ("r0", other)
             inst = register(ra, 23) | register(rb, 19) | constant(c)
         elif token in ('brzr', 'brnz', 'brpl', 'brmi'):
-            # only supports literal constants (no labels)
-            ra, c, *_ = tokens
+            ra, label, *_ = tokens
             c2 = ['zr', 'nz', 'pl', 'mi'].index(token[2:])
-            inst = register(ra, 23) | condition(c2) | constant(c)
+            inst = register(ra, 23) | condition(c2)
+            if re.match('-?0?x?b?[0-9]+', label):  # label is actually a constant
+                inst |= constant(label)
+                label = None
         elif token in ('mfhi', 'mflo', 'in', 'out', 'jal', 'jr'):
             ra, *_ = tokens
             inst = register(ra, 23)
@@ -123,46 +143,18 @@ def handle_instruction(token: str, tokens: List[str], line: str, line_no: int, a
             ra, rb, *_ = tokens
             inst = register(ra, 23) | register(rb, 19)
         else:
-            raise NotImplementedError('Fixme, line %d:\n%s' % (1 + line_no, line))
-    except Exception as err:
-        raise RuntimeError('Broken Line %d:\n%s' % (1 + line_no, line)) from err
+            raise NotImplementedError
 
-    inst |= opcode(token)
-    inst_str = hex(inst)[2:].zfill(8)
-    return  "{} // {:03d}: {}".format(inst_str, addr, line)
+        self.append(inst | opcode(token), self.line, label)
 
-def handle_directive(token: str, tokens: List[str], line: str, line_no: int, addr: int):
-    try:
-        # remove extra whitespace
-        tokens = [x for x in tokens if x != '']
-        if token == '.mem':
-            # Note: .mem returns int values, so comments inserted later
-            addr, *values = tokens
+    def append(self, code: int, comment: str, label: str = None):
+        if self.code_point in self.output:
+            self.error('Overwriting existing memory at %d' % self.code_point)
+        self.output[self.code_point] = (code, comment, label)
+        self.code_point += 1
 
-            addr = eval(addr) & ((1 << 32) - 1)
-            values = [eval(x) & ((1 << 32) - 1) for x in values]
-            
-            # e.g. /// .mem 1234 (42 values)
-            comment = "/// {} {} ({} values)".format(token, addr, len(values))
-
-            return { 'address': addr, 'values': values }, comment
-        elif token == '.inst':
-            # Note: .inst returns str result of handle_instruction, which includes the address in comment
-            addr, *inst_tokens = tokens
-
-            addr = eval(addr) & ((1 << 32) - 1)
-            inst_token = inst_tokens.pop(0)
-            inst = handle_instruction(inst_token, inst_tokens, line, line_no, addr)
-            
-            # e.g. /// .inst 1234 (91000023 // brzr r2, 35)
-            comment = "/// {} {} ({})".format(token, addr, inst)
-
-            return { 'address': addr, 'values': [inst] }, comment
-        else:
-            raise NotImplementedError('Fixme, line %d:\n%s' % (1 + line_no, line))
-    except Exception as err:
-        raise RuntimeError('Broken Line %d:\n%s' % (1 + line_no, line)) from err
-
+    def error(self, message: str):
+        raise RuntimeError(message)
 
 def opcode(x: str) -> int:
     if x in INSTRUCTIONS:
@@ -180,46 +172,9 @@ def condition(x: int) -> int:
     return x << 19
 
 
-INSTRUCTIONS = {
-    'ld': 0,
-    'ldi': 1,
-    'st': 2,
-    'add': 3,
-    'sub': 4,
-    'shr': 5,
-    'shl': 6,
-    'ror': 7,
-    'rol': 8,
-    'and': 9,
-    'or': 10,
-    'addi': 11,
-    'andi': 12,
-    'ori': 13,
-    'mul': 14,
-    'div': 15,
-    'neg': 16,
-    'not': 17,
-    'brzr': 18,
-    'brnz': 18,
-    'brpl': 18,
-    'brmi': 18,
-    'jr': 19,
-    'jal': 20,
-    'in': 21,
-    'out': 22,
-    'mfhi': 23,
-    'mflo': 24,
-    'nop': 25,
-    'halt': 26,
-}
-
+INSTRUCTIONS = {'ld': 0, 'ldi': 1, 'st': 2, 'add': 3, 'sub': 4, 'shr': 5, 'shl': 6, 'ror': 7, 'rol': 8, 'and': 9, 'or': 10, 'addi': 11, 'andi': 12, 'ori': 13, 'mul': 14, 'div': 15, 'neg': 16, 'not': 17, 'brzr': 18, 'brnz': 18, 'brpl': 18, 'brmi': 18, 'jr': 19, 'jal': 20, 'in': 21, 'out': 22, 'mfhi': 23, 'mflo': 24, 'nop': 25, 'halt': 26}
 FPU_INSTRUCTIONS = ['mvrf', 'mvfr', 'crf', 'cfr', 'curf', 'cufr', 'fadd', 'fsub', 'fmul', 'frc', 'fgt', 'feq']
 FPU_OPCODE = 27
-
-DIRECTIVES = {
-    '.mem',
-    '.inst',
-}
 
 if __name__ == '__main__':
     main(parse_command_line_args())

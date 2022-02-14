@@ -83,6 +83,10 @@ run : $(WORK) $(OUTPUTS) $(MEMORY) $(FPU_OUT)
 constants : out/constants.o
 	./out/constants.o
 
+.PHONY : assembler
+assembler :
+	python assembler/test.py
+
 $(OUT)/%.o : $(SRC)/%.c
 	mkdir -p $(OUT)
 	$(GCC) $< -lm -o $@
