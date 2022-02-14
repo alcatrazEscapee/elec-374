@@ -11,7 +11,7 @@ module fpu (
 	
 	// FPU Control Signals
 	input [9:0] select, // {fpu_feq, fpu_fgt, fpu_frc, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf}
-	
+
 	// Exceptions
 	output cast_out_of_bounds,
 	output cast_undefined,
@@ -40,7 +40,7 @@ module fpu (
 
 	wire fpu_feq, fpu_fgt, fpu_frc, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf;
 	assign {fpu_feq, fpu_fgt, fpu_frc, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf} = select;
-		
+
 	// Inputs / Outputs
 	wire [31:0] z_crf, z_cfr, z_fadd_sub, z_fmul, z_frc;
 	wire [31:0] fadd_a_in, fadd_b_in, fmul_a_in, fmul_b_in;
@@ -84,6 +84,7 @@ endmodule
 `timescale 1ns/100ps
 module fpu_test;
 
+	// todo: remove all control signals
 	// Control Signals
 	reg ir_en;
 	reg pc_increment, pc_in_alu, pc_in_rf_a;
@@ -104,49 +105,25 @@ module fpu_test;
 	reg clk, clr;
 	
 	cpu _cpu (
-		.ir_en(ir_en),
-		.pc_increment(pc_increment), .pc_in_alu(pc_in_alu), .pc_in_rf_a(pc_in_rf_a),
-		.ma_in_pc(ma_in_pc), .ma_in_alu(ma_in_alu),
-		.alu_a_in_rf(alu_a_in_rf), .alu_a_in_pc(alu_a_in_pc),
-		.alu_b_in_rf(alu_b_in_rf), .alu_b_in_constant(alu_b_in_constant),
-		.lo_en(lo_en), .hi_en(hi_en),
-		.rf_in_alu(rf_in_alu), .rf_in_hi(rf_in_hi), .rf_in_lo(rf_in_lo), .rf_in_memory(rf_in_memory), .rf_in_fpu(rf_in_fpu), .rf_in_input(1'b0),
-		.input_en(1'b0), .output_en(1'b0),
-		.alu_select({alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add}),
-		.fpu_select({fpu_feq, fpu_fgt, fpu_frc, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf}),
-		.fpu_mode(fpu_mode),
-		.input_in(32'b0), .output_out(),
-		.ir_out(ir_out), .clk(clk), .clr(clr),
-		.memory_en(memory_en),
-		.branch_condition(branch_condition)
+		.input_in(32'b0),
+		.output_out(),
+		.clk(clk),
+		.clr(clr),
+		.halt(1'b0)
 	);
 	
+	// todo: remove
 	task control_reset();
-		// Clears all control signal inputs before each step
-		begin
-			ir_en <= 1'b0;
-			pc_increment <= 1'b0; pc_in_alu <= 1'b0; pc_in_rf_a <= 1'b0;
-			ma_in_pc <= 1'b0; ma_in_alu <= 1'b0;
-			alu_a_in_rf <= 1'b0; alu_a_in_pc <= 1'b0;
-			alu_b_in_rf <= 1'b0; alu_b_in_constant <= 1'b0;
-			lo_en <= 1'b0; hi_en <= 1'b0;
-			rf_in_alu <= 1'b0; rf_in_hi <= 1'b0; rf_in_lo <= 1'b0; rf_in_memory <= 1'b0; rf_in_fpu <= 1'b0;
-			memory_en <= 1'b0;
-			{alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add} <= 12'b0;
-			{fpu_feq, fpu_fgt, fpu_frc, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf} <= 10'b0;
-			fpu_mode <= 1'b0;
-		end
+		begin end
 	endtask
 	
 	/**
-	 * Executes T0, T1, T2 steps (without testing)
+	 * Executes T0, T1, T2 steps
 	 */
+	 // todo: port the improvements to next_instruction from cpu_test
 	task next_instruction();
 		begin
-			control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1; // T0
-			#10 control_reset(); // T1
-			#10 control_reset(); ir_en <= 1'b1; // T2
-			#10 control_reset();
+			#30;
 		end
 	endtask
 		
@@ -174,7 +151,6 @@ module fpu_test;
 		// addi r1 r0 355
 		
 		next_instruction();
-		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
 		#5 $display("Test | addi r1 r0 355 @ T3 | a=0, b=355, z=355 | a=%0d, b=%0d, z=%0d", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5 $display("Test | addi r1 r0 355 @ End | r1=355 | r1=%0d", _cpu._rf.data[1]);
 	
@@ -182,7 +158,6 @@ module fpu_test;
 		
 		// T0
 		next_instruction();
-		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
 		#5 $display("Test | addi r2 r0 113 @ T3 | a=0, b=113, z=113 | a=%0d, b=%0d, z=%0d", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5 $display("Test | addi r2 r0 113 @ End | r2=113 | r2=%0d", _cpu._rf.data[2]);
 		
@@ -190,7 +165,6 @@ module fpu_test;
 		
 		// T0
 		next_instruction();
-		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_or <= 1'b1;
 		#5 $display("Test | ori r3 r0 0x4049 @ T3 | a=0, b=0x00004049, z=0x00004049 | a=%0d, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5 $display("Test | ori r3 r0 0x4049 @ End | r3=0x00004049 | r3=0x%h", _cpu._rf.data[3]);
 		
@@ -198,7 +172,6 @@ module fpu_test;
 		
 		// T0
 		next_instruction();
-		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
 		#5 $display("Test | addi r4 r0 16 @ T3 | a=0, b=16, z=16 | a=%0d, b=%0d, z=%0d", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5 $display("Test | addi r4 r0 16 @ End | r4=16 | r4=%0d", _cpu._rf.data[4]);
 		
@@ -206,7 +179,6 @@ module fpu_test;
 		
 		// T0
 		next_instruction();
-		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; rf_in_alu <= 1'b1; alu_shl <= 1'b1;
 		#5 $display("Test | shl r3 r3 r4 @ T3 | a=0x00004049, b=16, z=0x40490000 | a=0x%h, b=%0d, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5 $display("Test | shl r3 r3 r4 @ End | r3=0x40490000 | r3=0x%h", _cpu._rf.data[3]);
 		
@@ -214,9 +186,11 @@ module fpu_test;
 		
 		// T0
 		next_instruction();
-		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; rf_in_alu <= 1'b1; alu_or <= 1'b1;
 		#5 $display("Test | ori r3 r3 0x0fdb @ T3 | a=0x40490000, b=0x00000fdb, z=0x40490fdb | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5 $display("Test | ori r3 r3 0x0fdb @ End | r3=0x40490fdb | r3=0x%h", _cpu._rf.data[3]);
+
+		// todo: implement control signals for the rest of these instructions
+		$finish;
 		
 		// ===============================================================
 		//                     Floating Point Unit Tests
@@ -225,7 +199,7 @@ module fpu_test;
 		// crf f1 r1
 		
 		next_instruction();
-		fpu_mode <= 1'b1; fpu_crf <= 1'b1; rf_in_fpu <= 1'b1;
+		fpu_mode <= 1'b1; fpu_crf <= 1'b1;
 		#5 $display("Test | crf f1 r1 @ T3 | a=0x00000163, z=0x43b18000 | a=0x%h, z=0x%h", _cpu._fpu.a, _cpu._fpu.z);
 		#5 $display("Test | crf f1 r1 @ End | f1=0x43b18000 | f1=0x%h", _cpu._rf.data[1]);
 		

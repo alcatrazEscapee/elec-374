@@ -17,8 +17,21 @@ module sequential_divider #(
 	input clk,
 	input clr
 );
+	// Capture A and M inputs in registers
+	// If start is 1, pass the current A and M values directly, and enable the registers to capture the starting values
+	// Otherwise, use the values in the register. In this sense, the divider only needs A and M to be stable for one cycle
+	// In addition, the passthrough logic allows us to save a single cycle where A and M would otherwise not be available.
+	wire [BITS - 1:0] a_hold, a_hold_out;
+	wire [BITS - 1:0] m_hold, m_hold_out;
+	
+	assign a_hold = start ? a : a_hold_out;
+	assign m_hold = start ? m : m_hold_out;
+	
+	register #( .BITS(32) ) _a_hold ( .d(a), .q(a_hold_out), .en(start), .clk(clk), .clr(clr) );
+	register #( .BITS(32) ) _m_hold ( .d(m), .q(m_hold_out), .en(start), .clk(clk), .clr(clr) );
+	
 	// Exceptions
-	assign divide_by_zero = m == 0;
+	assign divide_by_zero = m_hold == 0;
 
 	// Internal non-restoring division implementation is N-1 bits, as we carry the sign bit outside the calculation
 	localparam DIV_BITS = BITS - 1;
@@ -31,14 +44,14 @@ module sequential_divider #(
 	
 	wire a_sign, m_sign, q_sign, r_sign;
 	
-	assign a_sign = a[BITS - 1];
-	assign m_sign = m[BITS - 1];
+	assign a_sign = a_hold[BITS - 1];
+	assign m_sign = m_hold[BITS - 1];
 	
-	signed_compliment #( .BITS(BITS) ) _ac ( .in(a), .out(a_compliment) );
-	signed_compliment #( .BITS(BITS) ) _mc ( .in(m), .out(m_compliment) );
+	signed_compliment #( .BITS(BITS) ) _ac ( .in(a_hold), .out(a_compliment) );
+	signed_compliment #( .BITS(BITS) ) _mc ( .in(m_hold), .out(m_compliment) );
 	
-	assign a_unsigned = a_sign ? a_compliment[DIV_BITS - 1:0] : a[DIV_BITS - 1:0];
-	assign m_unsigned = m_sign ? m_compliment[DIV_BITS - 1:0] : m[DIV_BITS - 1:0];
+	assign a_unsigned = a_sign ? a_compliment[DIV_BITS - 1:0] : a_hold[DIV_BITS - 1:0];
+	assign m_unsigned = m_sign ? m_compliment[DIV_BITS - 1:0] : m_hold[DIV_BITS - 1:0];
 	
 	// Assign the outputs to the correct sign adjusted value, based on the inputs' signs
 	assign q_sign = a_sign ^ m_sign;
@@ -52,12 +65,12 @@ module sequential_divider #(
 		r_adjusted = r_unsigned;
 		
 		if (m_unsigned == 1) begin // Divisor = 1
-			q_adjusted = {a_sign ? a_compliment[DIV_BITS] : a[DIV_BITS], a_unsigned};
+			q_adjusted = {a_sign ? a_compliment[DIV_BITS] : a_hold[DIV_BITS], a_unsigned};
 			r_adjusted = {BITS{1'b0}};
 		end
-		else if (m_sign ? m_compliment[DIV_BITS] : m[DIV_BITS]) begin // Divisor = 10...0
-			q_adjusted = a == m;
-			r_adjusted = a == m ? {BITS{1'b0}} : {1'b0, a_unsigned};
+		else if (m_sign ? m_compliment[DIV_BITS] : m_hold[DIV_BITS]) begin // Divisor = 10...0
+			q_adjusted = a_hold == m_hold;
+			r_adjusted = a_hold == m_hold ? {BITS{1'b0}} : {1'b0, a_unsigned};
 		end
 	end
 	
@@ -126,7 +139,12 @@ module sequential_divider_test;
 			start <= 1'b1;
 			#10;
 			start <= 1'b0;
-			#40;
+			a <= 5'b0;
+			b <= 5'b0;
+			#39;
+			a <= num;
+			b <= div;
+			#1;
 		end
 	endtask
 	

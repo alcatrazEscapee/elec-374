@@ -55,15 +55,10 @@ module alu(
 	assign z_or = a | b; // or
 	
 	// Multiplication
-	booth_bit_pair_multiplier mul ( .multiplicand(a), .multiplier(b), .product({hi_mul, lo_mul}) );
+	booth_bit_pair_multiplier _mul ( .multiplicand(a), .multiplier(b), .product({hi_mul, lo_mul}) );
 	
 	// Division
-	// Use a simple register to track the state - when alu_div is asserted by holding the delayed-by-one-cycle value
-	wire alu_div_last_cycle, div_start;	
-	assign div_start = alu_div & ~alu_div_last_cycle;
-	
-	register #( .BITS(1) ) _div_run ( .d(alu_div), .q(alu_div_last_cycle), .en(1'b1), .clk(clk), .clr(clr) );
-	sequential_divider #( .BITS(32) ) div ( .a(a), .m(b), .q(lo_div), .r(hi_div), .divide_by_zero(divide_by_zero), .start(div_start), .clk(clk), .clr(clr) );
+	sequential_divider #( .BITS(32) ) _div ( .a(a), .m(b), .q(lo_div), .r(hi_div), .divide_by_zero(divide_by_zero), .start(alu_div), .clk(clk), .clr(clr) );
 
 	assign z_not = ~a; // not
 	
