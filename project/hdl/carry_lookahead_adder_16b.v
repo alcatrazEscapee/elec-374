@@ -1,3 +1,9 @@
+/**
+ * carry_lookahead_adder_16b: 16-bit carry-lookahead adder.
+ * Computes `sum` = `a` + `b`.
+ * Carry-in `c_in`, carry-out `c_out`.
+ * Implemented with 4 carry_lookagead_adder_4b modules.
+ */
 module carry_lookahead_adder_16b(
 	input [15:0] a,
 	input [15:0] b,

@@ -1,3 +1,11 @@
+/**
+ * booth_bit_pair_multiplier: computes 64-bit product from two 32-bit values.
+ * Computes `product` = `multiplicand` * `multiplier`.
+ * Uses Booth bit-pair recoding to compute 16 partial products.
+ * Combines partial products with a 7-level Wallace tree. The first 6 levels
+ * are composed of carry-save adders, with the top-level being a carry-lookahead
+ * adder.
+ */
 module booth_bit_pair_multiplier(
 	input [31:0] multiplicand,
 	input [31:0] multiplier,

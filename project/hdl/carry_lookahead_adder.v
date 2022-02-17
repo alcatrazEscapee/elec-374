@@ -1,6 +1,9 @@
 /**
- * A 16N-Bit RCA, implemented with two levels of nested CLAs.
- * The parameter specifies the bits in multiples of 16 bits.
+ * carry_lookahead_adder: 16N-Bit RCA (i.e. 16/32/48/... bit)
+ * Parameter `BITS16` specifies width; defaults to 2 (i.e. 32-bit)
+ * Computes `sum` = `a` + `b`.
+ * Carry-in `c_in`, carry-out `c_out`.
+ * Implemented with nested CLAs using carry_lookahead_adder_16b.
  */
 module carry_lookahead_adder #(
 	parameter BITS16 = 2

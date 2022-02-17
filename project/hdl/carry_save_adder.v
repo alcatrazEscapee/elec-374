@@ -1,3 +1,10 @@
+/**
+ * carry_save_adder: n-bit carry-save adder.
+ * Parameter `BITS` specifies width; defaults to 32.
+ * Computes `sum` = `a` + `b` + `c`.
+ * (n-bit) carry-in `c`, (n-bit) carry-out `carry`.
+ * Implemented with n full_adder modules.
+ */
 module carry_save_adder #(
 	parameter BITS = 32
 ) (
