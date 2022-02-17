@@ -1,3 +1,9 @@
+/**
+ * adder_subtractor: 32-bit adder + subtractor.
+ * If `sub` is low, `sum` = `a` + `b`
+ * Otherwise, `sum` = `a` - `b`
+ * `c_out` indicates carry out (can be used for overflow detection)
+ */
 module adder_subtractor(
 	input [31:0] a,
 	input [31:0] b,

@@ -1,3 +1,12 @@
+/**
+ * alu: high-level module encapsulating 32-bit ALU for the CPU.
+ * Operands `a` and `b`. Operation selected with one-hot encoding of `select`:
+ * `select` = {alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, 
+ *             alu_ror, alu_shl, alu_shr, alu_sub, alu_add}
+ * Result to register `z`, except for:
+ *  - alu_div: 32-bit quotient in `lo`, 32-bit remainder in `hi`
+ *  - alu_mul: 64-bit product in {`hi`, `lo`}
+ */
 module alu(
 	input [31:0] a,
 	input [31:0] b,
