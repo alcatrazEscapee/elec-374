@@ -3,13 +3,13 @@
 **Group 42**
 
 - Alex O'Neill, 20043101, 16amon
-- Jared McGrath, 12345678, 16mickyd
+- Jared McGrath, 20053313, 16jtm2
 
 ## 1. Design Overview
 
 Our design was made entirely in Verilog, using no arithmetic operators (`+`, `-`, `/` or `*`), and also implementing some logical operators (left and right shifts and rotates) entirely from scratch. We also implemented various techniques for faster addition, including a Carry Lookahead Adder and Carry Save Adder, both of which are utilized in the Multiplier.
 
-The structure of our design is based on the 3-bus architecture referenced in the lab reader. This allowed us to remove the now redundant `A`, `B`, `Y`, and `Z` registers, and greatly simply interconnections between components of our datapath.
+The structure of our design is based on the 3-bus architecture referenced in the lab reader. This allowed us to remove the now redundant `A`, `B`, `Y`, and `Z` registers, and greatly simplify interconnections between components of our datapath.
 
 All of the modules we wrote have testbench modules included in the same module - for example, the `datapath` module has a `datapath_test` module both declared in the `datapath.v` file. We used a combination of a Makefile, and the ModelSim command line interface in order to run automatic tests. We use `$display()` calls to observe expected and actual outputs, and then report any differences by simulating the designs.
 
