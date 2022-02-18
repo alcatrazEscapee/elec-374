@@ -1,3 +1,8 @@
+/**
+ * A 32-bit, 16-register general purpose, dual ported register file.
+ * r0 is disconnected, and assumed to be a zero register.
+ * There are two concurrent read channels, so two operands can be read during a single clock cycle
+ */
 module register_file (
 	input [31:0] write_data,
 	input [3:0] write_addr,

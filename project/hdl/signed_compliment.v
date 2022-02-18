@@ -1,5 +1,6 @@
 /**
  * N-Bit Signed 2's Compliment Negation x -> (-x)
+ * Uses a internal carry chain similar to a ripple carry adder.
  */
 module signed_compliment #(
 	parameter BITS = 32

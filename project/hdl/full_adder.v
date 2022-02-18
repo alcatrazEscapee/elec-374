@@ -1,3 +1,6 @@
+/**
+ * A Full Adder, implementing 1-bit a + b + c_in = 2 * c_out + sum
+ */
 module full_adder(
 	input a,
 	input b,

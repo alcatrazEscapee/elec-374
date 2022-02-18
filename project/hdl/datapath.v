@@ -1,3 +1,9 @@
+/**
+ * Datapath module - the primary module for Phase 1.
+ * Contains the general purpose register file (RF), registers MA, MD, HI, LO, PC and IR
+ * Inputs are control signals and memory connections
+ * Outputs are memory logic and the IR register fields
+ */
 module datapath(
 	// Control Signals
 	input ir_en,

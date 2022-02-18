@@ -1,3 +1,7 @@
+/**
+ * A simple N-bit rising-edge clocked register
+ * Q = Input, D = Output (Yes, that is accidentally backwards from what the standard is)
+ */
 module register #(
 	parameter BITS = 32
 ) (

@@ -1,9 +1,7 @@
 /**
- * carry_save_adder: n-bit carry-save adder.
- * Parameter `BITS` specifies width; defaults to 32.
- * Computes `sum` = `a` + `b` + `c`.
- * (n-bit) carry-in `c`, (n-bit) carry-out `carry`.
- * Implemented with n full_adder modules.
+ * A N-bit Carry Save Adder - used in the multiplier's adder tree as it's faster than chained Ripple Carry Adders.
+ * Implements a + b + c = 2 * carry + sum
+ * Uses N full_adder modules, without chaining them together.
  */
 module carry_save_adder #(
 	parameter BITS = 32
