@@ -1,3 +1,9 @@
+/**
+ * carry_lookahead_adder_4b: 4-bit carry-lookahead adder.
+ * Computes `sum` = `a` + `b`.
+ * Carry-in `c_in`, carry-out `c_out`.
+ * Generate signal `g_out`, propagate signal `p_out`.
+ */
 module carry_lookahead_adder_4b(
 	input [3:0] a,
 	input [3:0] b,

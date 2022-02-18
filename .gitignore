@@ -24,4 +24,8 @@
 !/project/cpu.qsf
 !/project/cpu.sdc
 
+!/project/reports/**/*.md
+!/project/reports/**/*.png
+!/project/reports/**/*.pdf
+
 __pycache__
