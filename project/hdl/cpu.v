@@ -1,11 +1,7 @@
 /**
  * cpu: top-level module for the CPU.
- * Control signals (enables, datapath routing, RF addresses, ALU select,
- * constants), memory interface, and IR logic are specified as input ports to
- * this module, so the submodules aren't compiled away by Quartus.
+ * Control signals (enables, datapath routing, RF addresses, ALU select, constants), memory interface, and IR logic are specified as input ports to this module, so the submodules aren't compiled away by Quartus.
  * Instantiates the datapath module.
- * NOTE: in later revisions, the contents of the datapath module are moved here,
- * and the datapath module is removed from the project.
  */
 module cpu(
 	// Control Signals

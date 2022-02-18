@@ -1,5 +1,7 @@
 /**
  * N-Bit Ripple Carry Adder (RCA)
+ * Built by changing full_adder modules together.
+ * This is used for simple additions that are not on a critical path (and as a result don't need a faster adder such as a carry lookahead or carry save adder).
  */
 module ripple_carry_adder #(
 	parameter BITS = 32

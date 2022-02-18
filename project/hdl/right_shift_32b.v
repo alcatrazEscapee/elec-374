@@ -1,3 +1,7 @@
+/**
+ * A 32-bit right shift, using a Barrel Shifter design.
+ * Can optionally support rotate as well
+ */
 module right_shift_32b (
 	input [31:0] in,
 	input [31:0] shift,

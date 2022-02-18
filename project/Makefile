@@ -11,13 +11,11 @@ VLIB := vlib
 VLOG := vlog +acc
 VSIM := vsim -voptargs=+acc work.%s_test\nrun 10000ns
 
-FILES   := $(shell find $(HDL) -name '*.v')
 SOURCES := $(shell find $(HDL) -name '*.v' -printf '%f ')
 OUTPUTS := $(SOURCES:%.v=$(WORK)/%/_primary.vhd)
 TESTS   := $(SOURCES:%.v=%)
 
 VSIM_LOG := $(OUT)/vsim.log
-REPORT   := reports/generated.md
 
 .DEFAULT_GOAL = run
 
@@ -76,17 +74,6 @@ run : $(OUTPUTS)
 		printf "$(VSIM)" $(mod) | vsim > $(VSIM_LOG); \
 		python test/setup.py $(VSIM_LOG); \
 	fi
-
-.PHONY : report
-report : $(FILES)
-	mkdir -p reports 
-	touch $(REPORT)
-	printf "# Generated Report\n" > $(REPORT)
-	for mod in $(FILES) ; do \
-		printf "\n**File: %s**\n\n\`\`\`verilog\n" $$mod >> $(REPORT) ; \
-		cat $$mod >> $(REPORT) ; \
-		printf "\`\`\`\n" >> $(REPORT) ; \
-	done
 
 $(OUTPUTS) : $(WORK)/%/_primary.vhd : %.v
 	$(VLOG) "$<"
