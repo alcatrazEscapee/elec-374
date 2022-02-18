@@ -15,6 +15,7 @@
 !/project/cpu.qsf
 
 !/project/reports/**/*.md
+!/project/reports/**/*.png
 !/project/reports/**/*.pdf
 
 __pycache__
