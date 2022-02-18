@@ -1,3 +1,9 @@
+/**
+ * array_div: n-bit array divider module. 
+ * Width specified by `BITS` parameter; defaults to 32-bit.
+ * Computes (n-bit) `dividend` / `divisor`.
+ * Quotient stored in `quotient`; remainder in `remainder`.
+ */
 module array_div #(
 	parameter BITS = 32
 ) (

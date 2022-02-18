@@ -1,3 +1,8 @@
+/**
+ * A N-bit Carry Save Adder - used in the multiplier's adder tree as it's faster than chained Ripple Carry Adders.
+ * Implements a + b + c = 2 * carry + sum
+ * Uses N full_adder modules, without chaining them together.
+ */
 module carry_save_adder #(
 	parameter BITS = 32
 ) (
