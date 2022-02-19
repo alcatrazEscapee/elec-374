@@ -8,10 +8,9 @@ addi r4 r0 16
 shl r3 r3 r4
 ori r3 r3 0x0fdb
 
-// Move and Cast
+// Cast to floats
 crf f1 r1
 curf f2 r2
-mvrf f3 r3
 
 // Arithmetic
 fadd f4 f1 f3 // 355 + pi
@@ -23,7 +22,6 @@ fsub f6 f3 f5 // f6 = approximation delta
 feq r1 f3 f5 // pi == approximation ?
 fgt r2 f6 f0 // delta > 0 ?
 
-// Move and Cast Back
-crf r1 f6
-curf r1 f6
-mvfr r2 f3
+// Cast to ints
+cfr r1 f6
+cufr r1 f6

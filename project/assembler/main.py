@@ -139,7 +139,7 @@ class Assembler:
         elif token in ('fadd', 'fsub', 'fmul', 'fgt', 'feq'):
             ra, rb, rc, *_ = tokens
             inst = register(ra, 23) | register(rb, 19) | register(rc, 15)
-        elif token in ('frc', 'mvrf', 'mvfr', 'crf', 'cfr', 'curf', 'cufr'):
+        elif token in ('frc', 'crf', 'cfr', 'curf', 'cufr'):
             ra, rb, *_ = tokens
             inst = register(ra, 23) | register(rb, 19)
         else:
@@ -173,7 +173,7 @@ def condition(x: int) -> int:
 
 
 INSTRUCTIONS = {'ld': 0, 'ldi': 1, 'st': 2, 'add': 3, 'sub': 4, 'shr': 5, 'shl': 6, 'ror': 7, 'rol': 8, 'and': 9, 'or': 10, 'addi': 11, 'andi': 12, 'ori': 13, 'mul': 14, 'div': 15, 'neg': 16, 'not': 17, 'brzr': 18, 'brnz': 18, 'brpl': 18, 'brmi': 18, 'jr': 19, 'jal': 20, 'in': 21, 'out': 22, 'mfhi': 23, 'mflo': 24, 'nop': 25, 'halt': 26}
-FPU_INSTRUCTIONS = ['mvrf', 'mvfr', 'crf', 'cfr', 'curf', 'cufr', 'fadd', 'fsub', 'fmul', 'frc', 'fgt', 'feq']
+FPU_INSTRUCTIONS = ['crf', 'cfr', 'curf', 'cufr', 'fadd', 'fsub', 'fmul', 'frc', 'fgt', 'feq']
 FPU_OPCODE = 27
 
 if __name__ == '__main__':
