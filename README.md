@@ -74,13 +74,10 @@ Branch Instructions use the `C2` field to determine the type of condition:
 
 The processor has a floating point unit, capable of doing a select operations defined by the IEEE-754, single percision, floating point (`binary32`) standard. There is a single floating point instruction, which uses the `FPU` opcode to determine what action it takes. The FPU supports the following operations:
 
-- Move and casts of both signed and unsigned integers (Completely IEEE-754 compliant).
+- Casts of both signed and unsigned integers (Completely IEEE-754 compliant).
 - Addition, subtraction and multiplication of floating point values.
 - Floating point reciprocal using an approximate algorithim, (see [Resources](#resources)).
 - `==` and `>` comparisons.
-
-In addition, the FPU has it's own register file of floating point values, which are used in computations directly.
-
 
 The FPU defines one additional instruction type:
 
@@ -92,18 +89,16 @@ The "Floating Point" instruction has the following subinstructions based on the 
 
 FPU Opcode | Name | Assembly | RTN
 ---|---|---|---
-`0000` | Move Register to Float | `mvrf fA, rB` | `fA <- *(float*)& rB`
-`0001` | Move Float to Register | `mvfr rA, fB` | `rA <- *(int*)& fB`
-`0010` | Cast Register to Float | `crf fA, rB` | `fA <- (float) rB`
-`0011` | Cast Float to Register | `cfr rA, fB` | `rA <- (int) fB`
-`0100` | Cast Register to Float (Unsigned) | `curf fA, rB` | `fA <- (float) (unsigned int) rB`
-`0101` | Cast Float to Register (Unsigned) | `cufr rA, fB` | `rA <- (unsigned int) fB`
-`0110` | Float Add | `fadd fA, fB, fC` | `fA <- fB + fC`
-`1000` | Float Subtract | `fsub fA, fB, fC` | `fA <- fB - fC`
-`1001` | Float Multiply | `fmul fA, fB, fC` | `fA <- fB * fC`
-`1001` | Float Reciprocal | `frc fA, fB` | `fA <- 1.0f / fC` (Approximate)
-`1010` | Float Greater Than | `fgt rA, fB, fC` | `rA <- fB > fC`
-`1011` | Float Equals | `feq rA, fB, fC` | `rA <- fB == fC`
+`0000` | Cast Register to Float | `crf fA, rB` | `fA <- (float) rB`
+`0001` | Cast Float to Register | `cfr rA, fB` | `rA <- (int) fB`
+`0010` | Cast Register to Float (Unsigned) | `curf fA, rB` | `fA <- (float) (unsigned int) rB`
+`0011` | Cast Float to Register (Unsigned) | `cufr rA, fB` | `rA <- (unsigned int) fB`
+`0100` | Float Add | `fadd fA, fB, fC` | `fA <- fB + fC`
+`0101` | Float Subtract | `fsub fA, fB, fC` | `fA <- fB - fC`
+`0110` | Float Multiply | `fmul fA, fB, fC` | `fA <- fB * fC`
+`0111` | Float Reciprocal | `frc fA, fB` | `fA <- 1.0f / fC` (Approximate)
+`1000` | Float Greater Than | `fgt rA, fB, fC` | `rA <- fB > fC`
+`1010` | Float Equals | `feq rA, fB, fC` | `rA <- fB == fC`
 
 ### Instruction RTN
 

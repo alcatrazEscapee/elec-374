@@ -18,7 +18,7 @@ module cpu (
 	input memory_en,
 
 	input [11:0] alu_select,
-	input [11:0] fpu_select,
+	input [9:0] fpu_select,
 	input fpu_mode, // 0 = ALU, 1 = FPU
 	
 	// I/O
@@ -165,11 +165,9 @@ module cpu (
 	// Floating Point Unit
 	// Isolated from the rest of the processor as much as possible
 	fpu _fpu (
-		.rf_a_addr(rf_a_addr),
-		.rf_b_addr(rf_b_addr),
-		.rf_z_addr(rf_z_addr),
-		.ra(rf_a_out),
-		.rz(fpu_rz_out),
+		.a(rf_a_out),
+		.b(rf_b_out),
+		.z(fpu_rz_out),
 		.select(fpu_select),
 		.illegal(),
 		.alu_a(fpu_bridge_alu_a),
