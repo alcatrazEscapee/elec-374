@@ -23,7 +23,7 @@ module cpu (
 	
 	// I/O
 	input [31:0] input_in,
-	input [31:0] output_out,
+	output [31:0] output_out,
 
 	// To Control Logic
 	output [31:0] ir_out,
@@ -162,22 +162,6 @@ module cpu (
 		.clr(clr)
 	);
 
-	// Floating Point Unit
-	// Isolated from the rest of the processor as much as possible
-	fpu _fpu (
-		.a(rf_a_out),
-		.b(rf_b_out),
-		.z(fpu_rz_out),
-		.select(fpu_select),
-		.illegal(),
-		.alu_a(fpu_bridge_alu_a),
-		.alu_b(fpu_bridge_alu_b),
-		.alu_hi(alu_hi_out),
-		.alu_lo(alu_lo_out),
-		.clk(clk),
-		.clr(clr)
-	);
-
 	register _pc  ( .q(pc_in),      .d(pc_out),     .en(pc_en),     .clk(clk), .clr(clr) );
 	register _ir  ( .q(memory_out), .d(ir_out),     .en(ir_en),     .clk(clk), .clr(clr) ); // IR in = Memory
 	register _ma  ( .q(ma_in),      .d(ma_out),     .en(ma_en),     .clk(clk), .clr(clr) );
@@ -186,14 +170,40 @@ module cpu (
 	register _in  ( .q(input_in),   .d(input_out),  .en(input_en),  .clk(clk), .clr(clr) ); // IN and OUT
 	register _out ( .q(rf_a_out),   .d(output_out), .en(output_en), .clk(clk), .clr(clr) );
 
-	alu _alu ( .a(alu_a_in), .b(alu_b_in), .z(alu_z_out), .hi(alu_hi_out), .lo(alu_lo_out), .select(alu_select) );
-
 	memory #( .BITS(32), .WORDS(512) ) _memory (
 		.address(ma_out[8:0]),
 		.data_in(rf_b_out), // Data to Memory = RF B Out
 		.data_out(memory_out),
 		.en(memory_en),
 		.clk(clk)
+	);
+	
+	alu _alu (
+		.a(alu_a_in),
+		.b(alu_b_in),
+		.z(alu_z_out),
+		.hi(alu_hi_out),
+		.lo(alu_lo_out),
+		.select(alu_select),
+		.divide_by_zero(), // todo: exception handling for div/0 errors
+		.clk(clk),
+		.clr(clr)
+	);
+
+	// Floating Point Unit
+	// Isolated from the rest of the processor as much as possible
+	fpu _fpu (
+		.a(rf_a_out),
+		.b(rf_b_out),
+		.z(fpu_rz_out),
+		.select(fpu_select),
+		.illegal(), // todo: floating point exception handling (this signal needs to be wider)
+		.alu_a(fpu_bridge_alu_a),
+		.alu_b(fpu_bridge_alu_b),
+		.alu_hi(alu_hi_out),
+		.alu_lo(alu_lo_out),
+		.clk(clk),
+		.clr(clr)
 	);
 
 endmodule
@@ -381,6 +391,7 @@ module cpu_test;
 		// div r2, r4
 		next_instruction(11, "div r2 r4", 32'h79200000);
 		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; alu_div <= 1'b1; hi_en <= 1'b1; lo_en <= 1'b1;
+		#320 // Wait for div to complete (32 cycles)
 		#5 $display("Test | div r2 r4 @ <T3 | a=53, b=28 | a=%0d, b=%0d", _cpu._alu.a, _cpu._alu.b);
 		#5 $display("Test | div r2 r4 @ >T3 | hi=25, lo=1 | hi=%0d, lo=%0d", _cpu._hi.d, _cpu._lo.d);
 

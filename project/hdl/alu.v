@@ -11,9 +11,15 @@ module alu(
 	input [31:0] a,
 	input [31:0] b,
 	input [11:0] select, // {alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add}
+	
 	output reg [31:0] z, // Outputs for all other instructions
 	output reg [31:0] hi, // Outputs for div, mul
-	output reg [31:0] lo
+	output reg [31:0] lo,
+	
+	output divide_by_zero, // Exceptions
+	
+	input clk,
+	input clr
 );
 	// ALU Operations (by select index)
 	// 0 = Add
@@ -28,23 +34,25 @@ module alu(
 	// 9 = Divide
 	// A = Negate
 	// B = Not
+	wire alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add;
+	assign {alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add} = select;
 	
+	// Outputs
 	wire [31:0] z_add_sub, z_shift_right, z_shift_left, z_and, z_or, z_not;
-	// pre-MUX outputs for mul/div
 	wire [31:0] hi_mul, lo_mul, hi_div, lo_div;
 		
 	// ALU Operations
 	
 	// Add / Subtract / Negate
 	carry_lookahead_adder #( .BITS16(2) ) _cla (
-		.a(select[10] ? 32'b0 : a),
-		.b(select[10] ? ~a : (select[1] ? ~b : b)),
-		.sum(z_add_sub), .c_in(select[1] | select[10]), .c_out()
+		.a(alu_neg ? 32'b0 : a),
+		.b(alu_neg ? ~a : (alu_sub ? ~b : b)),
+		.sum(z_add_sub), .c_in(alu_sub | alu_neg), .c_out()
 	);
 	
 	// Shift / Rotate
-	right_shift #( .BITS(32), .SHIFT_BITS(32) ) _shr ( .in(a), .shift(b), .out(z_shift_right), .is_rotate(select[4]), .accumulate() );
-	left_shift  #( .BITS(32), .SHIFT_BITS(32) ) _shl ( .in(a), .shift(b), .out(z_shift_left), .is_rotate(select[5]), .accumulate() );
+	right_shift #( .BITS(32), .SHIFT_BITS(32) ) _shr ( .in(a), .shift(b), .out(z_shift_right), .is_rotate(alu_ror), .accumulate() );
+	left_shift  #( .BITS(32), .SHIFT_BITS(32) ) _shl ( .in(a), .shift(b), .out(z_shift_left), .is_rotate(alu_rol), .accumulate() );
 	
 	assign z_and = a & b; // and
 	assign z_or = a | b; // or
@@ -53,7 +61,12 @@ module alu(
 	booth_bit_pair_multiplier mul ( .multiplicand(a), .multiplier(b), .product({hi_mul, lo_mul}) );
 	
 	// Division
-	array_div #( .BITS(32) ) div ( .dividend(a), .divisor(b), .quotient(lo_div), .remainder(hi_div) );
+	// Use a simple register to track the state - when alu_div is asserted by holding the delayed-by-one-cycle value
+	wire alu_div_last_cycle, div_start;	
+	assign div_start = alu_div & ~alu_div_last_cycle;
+	
+	register #( .BITS(1) ) _div_run ( .q(alu_div), .d(alu_div_last_cycle), .en(1'b1), .clk(clk), .clr(clr) );
+	sequential_divider #( .BITS(32) ) div ( .a(a), .m(b), .q(lo_div), .r(hi_div), .divide_by_zero(divide_by_zero), .start(div_start), .clk(clk), .clr(clr) );
 
 	assign z_not = ~a; // not
 	
@@ -88,11 +101,8 @@ module alu_test;
 	reg [31:0] a, b;
 	reg [11:0] select;
 	wire [31:0] z, hi, lo;
-	wire signed [31:0] sz;
 	
-	assign sz = z; // For reading signed outputs
-
-	alu _alu ( .a(a), .b(b), .select(select), .z(z), .hi(hi), .lo(lo) );
+	alu _alu ( .a(a), .b(b), .select(select), .z(z), .hi(hi), .lo(lo), .divide_by_zero(), .clk(1'b0), .clr(1'b0) );
 	
 	initial begin
 	
@@ -126,11 +136,10 @@ module alu_test;
 		select <= 12'b000100000000; // Multiply
 		#1 $display("Test | mul | 124 * 7 = (lo 868, hi 0) | %0d * %0d = (lo %0d, hi %0d)", a, b, lo, hi);
 		
-		select <= 12'b001000000000; // Divide
-		#1 $display("Test | div | 124 / 7 = (lo 17, hi 5) | %0d / %0d = (lo %0d, hi %0d)", a, b, lo, hi);
+		// Skip Divide - it takes several cycles and a properly configured clock
 
 		select <= 12'b010000000000; // Negate
-		#1 $display("Test | neg | -(124) = -124 | -(%0d) = %0d", a, sz);
+		#1 $display("Test | neg | -(124) = -124 | -(%0d) = %0d", a, $signed(z));
 		
 		select <= 12'b100000000000; // Not
 		#1 $display("Test | not | ~0000007c = ffffff83 | ~%h = %h", a, z);
@@ -138,5 +147,4 @@ module alu_test;
 		$finish;
 	
 	end
-
 endmodule
