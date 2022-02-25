@@ -2,7 +2,10 @@ module cast_float_to_int (
 	input [31:0] in,
 	output reg [31:0] out,
 	input is_signed,
-	output reg illegal // Illegal operation: negative float to unsigned integer, NaN or inf to integer, value outside the range of the integer type
+	
+	// Exceptions
+	output reg cast_out_of_bounds, // Casting a negative to unsigned integer, or value outside of the range of the integer type
+	output reg cast_undefined // Casting NaN or inf to an integer
 );
 	wire sign;
 	wire [7:0] exponent;
@@ -37,16 +40,17 @@ module cast_float_to_int (
 	
 	always @(*) begin
 		out = 32'b0;
-		illegal = 1'b0;
+		cast_out_of_bounds = 1'b0;
+		cast_undefined = 1'b0;
 		
 		if (in == 32'h7fc00000 || in == 32'hffc00000 || in == 32'h7f800000 || in == 32'hff80000) // +/- NaN or +/- inf
-			illegal = 1'b1;
+			cast_undefined = 1'b1;
 		else if (sign && !is_signed && normalized != 32'b0) // Negative to Unsigned (Nonzero)
-			illegal = 1'b1;
+			cast_out_of_bounds = 1'b1;
 		else if (is_signed && in == 32'hcf000000) // Exact value for largest negative signed value
 			out = 32'h80000000;
 		else if (gt_max) // Positive overflow
-			illegal = 1'b1;
+			cast_out_of_bounds = 1'b1;
 		else if (lt_min) // Less than minimum nonzero integer
 			out = 32'b0;
 		else if (sign && is_signed) // Signed 2's compliment
@@ -63,57 +67,66 @@ module cast_float_to_int_test;
 	reg [31:0] in;
 	reg is_signed;
 	wire [31:0] out;
-	wire illegal;
+	wire cast_out_of_bounds, cast_undefined;
+	
+	wire exception;
+	assign exception = cast_out_of_bounds | cast_undefined;
 	
 	integer i;
 	
-	cast_float_to_int _ftoi ( .in(in), .out(out), .is_signed(is_signed), .illegal(illegal) );
+	cast_float_to_int _ftoi (
+		.in(in),
+		.out(out),
+		.is_signed(is_signed),
+		.cast_out_of_bounds(cast_out_of_bounds),
+		.cast_undefined(cast_undefined)
+	);
 
 	initial begin
 	
 		// (Signed) Special Cases
 		is_signed <= 1'b1;
 		
-		in <= 32'h7fc00000; #1 $display("Test fpu i | signed +NaN | %h | %h | %b", in, out, illegal);
-		in <= 32'hffc00000; #1 $display("Test fpu i | signed -NaN | %h | %h | %b", in, out, illegal);
-		in <= 32'h7f800000; #1 $display("Test fpu i | signed +inf | %h | %h | %b", in, out, illegal);
-		in <= 32'hff800000; #1 $display("Test fpu i | signed -inf | %h | %h | %b", in, out, illegal);
+		in <= 32'h7fc00000; #1 $display("Test fpu i | signed +NaN | %h | %h | %b", in, out, exception);
+		in <= 32'hffc00000; #1 $display("Test fpu i | signed -NaN | %h | %h | %b", in, out, exception);
+		in <= 32'h7f800000; #1 $display("Test fpu i | signed +inf | %h | %h | %b", in, out, exception);
+		in <= 32'hff800000; #1 $display("Test fpu i | signed -inf | %h | %h | %b", in, out, exception);
 		
-		in <= 32'h00000000; #1 $display("Test fpu i | signed +0 | %h | %h | %b", in, out, illegal);
-		in <= 32'h10000000; #1 $display("Test fpu i | signed -0 | %h | %h | %b", in, out, illegal);
+		in <= 32'h00000000; #1 $display("Test fpu i | signed +0 | %h | %h | %b", in, out, exception);
+		in <= 32'h10000000; #1 $display("Test fpu i | signed -0 | %h | %h | %b", in, out, exception);
 		
-		in <= 32'h4f000000; #1 $display("Test fpu i | signed +2^31   | %h | %h | %b", in, out, illegal);
-		in <= 32'h4effffff; #1 $display("Test fpu i | signed +2^31-1 | %h | %h | %b", in, out, illegal);
-		in <= 32'hcf000001; #1 $display("Test fpu i | signed -2^31+1 | %h | %h | %b", in, out, illegal);
-		in <= 32'hcf000000; #1 $display("Test fpu i | signed -2^31   | %h | %h | %b", in, out, illegal);
-		in <= 32'hceffffff; #1 $display("Test fpu i | signed -2^31-1 | %h | %h | %b", in, out, illegal);
+		in <= 32'h4f000000; #1 $display("Test fpu i | signed +2^31   | %h | %h | %b", in, out, exception);
+		in <= 32'h4effffff; #1 $display("Test fpu i | signed +2^31-1 | %h | %h | %b", in, out, exception);
+		in <= 32'hcf000001; #1 $display("Test fpu i | signed -2^31+1 | %h | %h | %b", in, out, exception);
+		in <= 32'hcf000000; #1 $display("Test fpu i | signed -2^31   | %h | %h | %b", in, out, exception);
+		in <= 32'hceffffff; #1 $display("Test fpu i | signed -2^31-1 | %h | %h | %b", in, out, exception);
 	
 		// (Unsigned) Special Cases
 		is_signed <= 1'b0;
 		
-		in <= 32'h7fc00000; #1 $display("Test fpu j | unsigned +NaN | %h | %h | %b", in, out, illegal);
-		in <= 32'hffc00000; #1 $display("Test fpu j | unsigned -NaN | %h | %h | %b", in, out, illegal);
-		in <= 32'h7f800000; #1 $display("Test fpu j | unsigned +inf | %h | %h | %b", in, out, illegal);
-		in <= 32'hff800000; #1 $display("Test fpu j | unsigned -inf | %h | %h | %b", in, out, illegal);
+		in <= 32'h7fc00000; #1 $display("Test fpu j | unsigned +NaN | %h | %h | %b", in, out, exception);
+		in <= 32'hffc00000; #1 $display("Test fpu j | unsigned -NaN | %h | %h | %b", in, out, exception);
+		in <= 32'h7f800000; #1 $display("Test fpu j | unsigned +inf | %h | %h | %b", in, out, exception);
+		in <= 32'hff800000; #1 $display("Test fpu j | unsigned -inf | %h | %h | %b", in, out, exception);
 		
-		in <= 32'h00000000; #1 $display("Test fpu j | unsigned +0 | %h | %h | %b", in, out, illegal);
-		in <= 32'h10000000; #1 $display("Test fpu j | unsigned -0 | %h | %h | %b", in, out, illegal);
+		in <= 32'h00000000; #1 $display("Test fpu j | unsigned +0 | %h | %h | %b", in, out, exception);
+		in <= 32'h10000000; #1 $display("Test fpu j | unsigned -0 | %h | %h | %b", in, out, exception);
 		
-		in <= 32'h4f800000; #1 $display("Test fpu j | unsigned +2^32   | %h | %h | %b", in, out, illegal);
-		in <= 32'h4f7fffff; #1 $display("Test fpu j | unsigned +2^32-1 | %h | %h | %b", in, out, illegal);
-		in <= 32'h80000001; #1 $display("Test fpu j | unsigned ? <<< 0 | %h | %h | %b", in, out, illegal);
+		in <= 32'h4f800000; #1 $display("Test fpu j | unsigned +2^32   | %h | %h | %b", in, out, exception);
+		in <= 32'h4f7fffff; #1 $display("Test fpu j | unsigned +2^32-1 | %h | %h | %b", in, out, exception);
+		in <= 32'h80000001; #1 $display("Test fpu j | unsigned ? <<< 0 | %h | %h | %b", in, out, exception);
 	
 		// Random Tests
 		
 		for (i = 0; i < 1000; i = i + 1) begin
 			in <= $urandom;
-			is_signed <= 1'b1; #1 $display("Test fpu i | cast (signed)   0x%h | %h | %h | %b", in, in, out, illegal);
-			is_signed <= 1'b0; #1 $display("Test fpu j | cast (unsigned) 0x%h | %h | %h | %b", in, in, out, illegal);
+			is_signed <= 1'b1; #1 $display("Test fpu i | cast (signed)   0x%h | %h | %h | %b", in, in, out, exception);
+			is_signed <= 1'b0; #1 $display("Test fpu j | cast (unsigned) 0x%h | %h | %h | %b", in, in, out, exception);
 		end
 		
 		// Regressions
-		is_signed <= 1'b0; in <= 32'h4cc73403; #1 $display("Test fpu j | cast regression 0x%h | %h | %h | %b", in, in, out, illegal);
-		is_signed <= 1'b0; in <= 32'hc64a8cd1; #1 $display("Test fpu j | cast regression 0x%h | %h | %h | %b", in, in, out, illegal);
+		is_signed <= 1'b0; in <= 32'h4cc73403; #1 $display("Test fpu j | cast regression 0x%h | %h | %h | %b", in, in, out, exception);
+		is_signed <= 1'b0; in <= 32'hc64a8cd1; #1 $display("Test fpu j | cast regression 0x%h | %h | %h | %b", in, in, out, exception);
 		
 		$finish;
 	end

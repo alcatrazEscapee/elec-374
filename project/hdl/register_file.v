@@ -22,7 +22,7 @@ module register_file #(
 	genvar i;
 	generate
 		for (i = 0; i < WORDS; i = i + 1) begin : gen_r
-			register ri ( .q(data_in), .d(data[i]), .clk(clk), .clr(clr), .en(addr_in == i) );
+			register ri ( .d(data_in), .q(data[i]), .clk(clk), .clr(clr), .en(addr_in == i) );
 		end
 	endgenerate
 	

@@ -1,3 +1,8 @@
+/**
+ * Counterpart of the ALU for all floating point operations
+ * Selection between operations is done with the select signal, which is 1-hot encoded
+ * Exposes a small interface to the ALU, as floating point multiplication uses the ALU multiplier internally.
+ */
 module fpu (
 	// Basic Inputs / Outputs
 	input [31:0] a,
@@ -6,7 +11,10 @@ module fpu (
 	
 	// FPU Control Signals
 	input [9:0] select, // {fpu_feq, fpu_fgt, fpu_frc, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf}
-	output illegal,
+	
+	// Exceptions
+	output cast_out_of_bounds,
+	output cast_undefined,
 
 	// ALU Interface (for integer multiplication)
 	output [31:0] alu_a,
@@ -19,24 +27,19 @@ module fpu (
 	input clr
 );
 	// FPU Operations
-	// 0 = mvrf = Move from Register to Float
-	// 1 = mvfr = Move from Float to Register
-	// 2 = crf  = Cast Register to Float
-	// 3 = cfr  = Cast Float to Register
-	// 4 = curf = Cast (Unsigned) Register to Float
-	// 5 = cufr = Cast Float to (Unsigned) Register
-	// 6 = fadd = Float Add
-	// 7 = fsub = Float Subtract
-	// 8 = fmul = Float Multiply
-	// 9 = frc  = Float Reciprocal (Clocked, 8 cycles)
-	// A = fgt  = Float Greater Than
-	// B = feq  = Float Equals
+	// 0 = crf  = Cast Register to Float
+	// 1 = cfr  = Cast Float to Register
+	// 2 = curf = Cast (Unsigned) Register to Float
+	// 3 = cufr = Cast Float to (Unsigned) Register
+	// 4 = fadd = Float Add
+	// 5 = fsub = Float Subtract
+	// 6 = fmul = Float Multiply
+	// 7 = frc  = Float Reciprocal (Clocked, 8 cycles)
+	// 8 = fgt  = Float Greater Than
+	// 9 = feq  = Float Equals
 
 	wire fpu_feq, fpu_fgt, fpu_frc, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf;
-	wire illegal_cfr;
-	
 	assign {fpu_feq, fpu_fgt, fpu_frc, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf} = select;
-	assign illegal = illegal_cfr;
 		
 	// Inputs / Outputs
 	wire [31:0] z_crf, z_cfr, z_fadd_sub, z_fmul, z_frc;
@@ -45,7 +48,7 @@ module fpu (
 	
 	// Floating Point Operations
 	cast_int_to_float _crf ( .in(a), .out(z_crf), .is_signed(fpu_crf) );
-	cast_float_to_int _cfr ( .in(a), .out(z_cfr), .is_signed(fpu_cfr), .illegal(illegal_cfr) );
+	cast_float_to_int _cfr ( .in(a), .out(z_cfr), .is_signed(fpu_cfr), .cast_undefined(cast_undefined), .cast_out_of_bounds(cast_out_of_bounds) );
 	
 	float_adder_subtractor _fadd_sub ( .fa(fadd_a_in), .fb(fadd_b_in), .fz(z_fadd_sub), .add_sub(fpu_fsub) );
 	float_multiplier _fmul ( .fa(fmul_a_in), .fb(fmul_b_in), .fz(z_fmul), .alu_a(alu_a), .alu_b(alu_b), .alu_product({alu_hi, alu_lo}) );

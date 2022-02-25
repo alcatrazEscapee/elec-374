@@ -162,13 +162,13 @@ module cpu (
 		.clr(clr)
 	);
 
-	register _pc  ( .q(pc_in),      .d(pc_out),     .en(pc_en),     .clk(clk), .clr(clr) );
-	register _ir  ( .q(memory_out), .d(ir_out),     .en(ir_en),     .clk(clk), .clr(clr) ); // IR in = Memory
-	register _ma  ( .q(ma_in),      .d(ma_out),     .en(ma_en),     .clk(clk), .clr(clr) );
-	register _hi  ( .q(alu_hi_out), .d(hi_out),     .en(hi_en),     .clk(clk), .clr(clr) ); // HI and LO in = ALU out
-	register _lo  ( .q(alu_lo_out), .d(lo_out),     .en(lo_en),     .clk(clk), .clr(clr) );
-	register _in  ( .q(input_in),   .d(input_out),  .en(input_en),  .clk(clk), .clr(clr) ); // IN and OUT
-	register _out ( .q(rf_a_out),   .d(output_out), .en(output_en), .clk(clk), .clr(clr) );
+	register _pc  ( .d(pc_in),      .q(pc_out),     .en(pc_en),     .clk(clk), .clr(clr) );
+	register _ir  ( .d(memory_out), .q(ir_out),     .en(ir_en),     .clk(clk), .clr(clr) ); // IR in = Memory
+	register _ma  ( .d(ma_in),      .q(ma_out),     .en(ma_en),     .clk(clk), .clr(clr) );
+	register _hi  ( .d(alu_hi_out), .q(hi_out),     .en(hi_en),     .clk(clk), .clr(clr) ); // HI and LO in = ALU out
+	register _lo  ( .d(alu_lo_out), .q(lo_out),     .en(lo_en),     .clk(clk), .clr(clr) );
+	register _in  ( .d(input_in),   .q(input_out),  .en(input_en),  .clk(clk), .clr(clr) ); // IN and OUT
+	register _out ( .d(rf_a_out),   .q(output_out), .en(output_en), .clk(clk), .clr(clr) );
 
 	memory #( .BITS(32), .WORDS(512) ) _memory (
 		.address(ma_out[8:0]),
@@ -185,7 +185,7 @@ module cpu (
 		.hi(alu_hi_out),
 		.lo(alu_lo_out),
 		.select(alu_select),
-		.divide_by_zero(), // todo: exception handling for div/0 errors
+		.divide_by_zero(), // todo: exception handling
 		.clk(clk),
 		.clr(clr)
 	);
@@ -197,7 +197,8 @@ module cpu (
 		.b(rf_b_out),
 		.z(fpu_rz_out),
 		.select(fpu_select),
-		.illegal(), // todo: floating point exception handling (this signal needs to be wider)
+		.cast_out_of_bounds(), // todo: exception handling
+		.cast_undefined(),
 		.alu_a(fpu_bridge_alu_a),
 		.alu_b(fpu_bridge_alu_b),
 		.alu_hi(alu_hi_out),
@@ -232,7 +233,8 @@ module cpu_test;
 	wire [31:0] ir_out;
 	wire branch_condition;
 
-	reg [31:0] input_in, output_out;
+	reg [31:0] input_in;
+	wire [31:0] output_out;
 
 	reg clk, clr;
 
@@ -278,7 +280,7 @@ module cpu_test;
 		begin
 			// T0
 			control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-			#10 $display("Test | %s @ T0 | pc=%0d, ma=%0d | pc=%0d, ma=%0d", assembly, pc + 1, pc, _cpu._pc.d, _cpu._ma.d);
+			#10 $display("Test | %s @ T0 | pc=%0d, ma=%0d | pc=%0d, ma=%0d", assembly, pc + 1, pc, _cpu._pc.q, _cpu._ma.q);
 
 			// T1
 			control_reset();
@@ -286,7 +288,7 @@ module cpu_test;
 
 			// T2
 			control_reset(); ir_en <= 1'b1;
-			#10 $display("Test | %s @ T2 | ir=0x%h | ir=0x%h", assembly, instruction, _cpu._ir.d);
+			#10 $display("Test | %s @ T2 | ir=0x%h | ir=0x%h", assembly, instruction, _cpu._ir.q);
 
 			// T3
 			control_reset();
@@ -386,14 +388,14 @@ module cpu_test;
 		next_instruction(10, "mul r2 r4", 32'h71200000);
 		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; alu_mul <= 1'b1; hi_en <= 1'b1; lo_en <= 1'b1;
 		#5 $display("Test | mul r2 r4 @ <T3 | a=53, b=28 | a=%0d, b=%0d", _cpu._alu.a, _cpu._alu.b);
-		#5 $display("Test | mul r2 r4 @ >T3 | hi=0, lo=1484 | hi=%0d, lo=%0d", _cpu._hi.d, _cpu._lo.d);
+		#5 $display("Test | mul r2 r4 @ >T3 | hi=0, lo=1484 | hi=%0d, lo=%0d", _cpu._hi.q, _cpu._lo.q);
 
 		// div r2, r4
 		next_instruction(11, "div r2 r4", 32'h79200000);
 		alu_a_in_rf <= 1'b1; alu_b_in_rf <= 1'b1; alu_div <= 1'b1; hi_en <= 1'b1; lo_en <= 1'b1;
 		#320 // Wait for div to complete (32 cycles)
 		#5 $display("Test | div r2 r4 @ <T3 | a=53, b=28 | a=%0d, b=%0d", _cpu._alu.a, _cpu._alu.b);
-		#5 $display("Test | div r2 r4 @ >T3 | hi=25, lo=1 | hi=%0d, lo=%0d", _cpu._hi.d, _cpu._lo.d);
+		#5 $display("Test | div r2 r4 @ >T3 | hi=25, lo=1 | hi=%0d, lo=%0d", _cpu._hi.q, _cpu._lo.q);
 
 		// neg r5, r2
 		next_instruction(12, "neg r5 r2", 32'h82900000);
@@ -415,7 +417,7 @@ module cpu_test;
 		// T3
 		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; ma_in_alu <= 1'b1; alu_add <= 1'b1;
 		#5; $display("Test | ld r1 85 @ <T3 | a=0x00000000, b=0x00000055, z=0x00000055 | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
-		#5; $display("Test | ld r1 85 @ >T3 | ma=0x00000055 | ma=0x%h", _cpu._ma.d);
+		#5; $display("Test | ld r1 85 @ >T3 | ma=0x00000055 | ma=0x%h", _cpu._ma.q);
 
 		// T4
 		control_reset();
@@ -467,7 +469,7 @@ module cpu_test;
 		// T3
 		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; ma_in_alu <= 1'b1; alu_add <= 1'b1;
 		#5; $display("Test | st 90 r1 @ <T3 | a=0x00000000, b=0x0000005a, z=0x0000005a | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
-		#5; $display("Test | st 90 r1 @ >T3 | ma=0x0000005a | ma=0x%h", _cpu._ma.d);
+		#5; $display("Test | st 90 r1 @ >T3 | ma=0x0000005a | ma=0x%h", _cpu._ma.q);
 
 		// T4
 		control_reset(); memory_en <= 1'b1;
@@ -481,7 +483,7 @@ module cpu_test;
 		// T3
 		alu_a_in_rf <= 1'b1; alu_b_in_constant <= 1'b1; ma_in_alu <= 1'b1; alu_add <= 1'b1;
 		#5; $display("Test | st 90(r1) r1 @ <T3 | a=0x00000055, b=0x0000005a, z=0x000000af | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
-		#5; $display("Test | st 90(r1) r1 @ >T3 | ma=0x000000af | ma=0x%h", _cpu._ma.d);
+		#5; $display("Test | st 90(r1) r1 @ >T3 | ma=0x000000af | ma=0x%h", _cpu._ma.q);
 
 		// T4
 		control_reset(); memory_en <= 1'b1;
@@ -523,7 +525,7 @@ module cpu_test;
 		// Condition is false, so expect pc to remain the same
 		alu_a_in_pc <= 1'b1; alu_b_in_constant <= 1'b1; pc_in_alu <= branch_condition; alu_add <= 1'b1;
 		#5; $display("Test | brzr r2 35 @ <T3 | a=0x00000018, b=0x00000023, z=0x0000003b | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
-		#5; $display("Test | brzr r2 35 @ >T3 | br_cond=0x0, pc=0x00000018 | br_cond=0x%h, pc=0x%h", branch_condition, _cpu._pc.d);
+		#5; $display("Test | brzr r2 35 @ >T3 | br_cond=0x0, pc=0x00000018 | br_cond=0x%h, pc=0x%h", branch_condition, _cpu._pc.q);
 
 
 		// brnz r2, 35
@@ -533,13 +535,13 @@ module cpu_test;
 		// Condition is true, so expect pc to go up
 		alu_a_in_pc <= 1'b1; alu_b_in_constant <= 1'b1; pc_in_alu <= branch_condition; alu_add <= 1'b1;
 		#5; $display("Test | brnz r2 35 @ <T3 | a=0x00000019, b=0x00000023, z=0x0000003c | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
-		#5; $display("Test | brnz r2 35 @ >T3 | br_cond=0x1, pc=0x0000003c | br_cond=0x%h, pc=0x%h", branch_condition, _cpu._pc.d);
+		#5; $display("Test | brnz r2 35 @ >T3 | br_cond=0x1, pc=0x0000003c | br_cond=0x%h, pc=0x%h", branch_condition, _cpu._pc.q);
 
 		// Reset PC after last branch (brnz r2 -36 @ pc = 60 = 0x3c)
 		next_instruction(60, "brnz r2 -36", 32'h910fffdc);
 		alu_a_in_pc <= 1'b1; alu_b_in_constant <= 1'b1; pc_in_alu <= branch_condition; alu_add <= 1'b1;
 		#5; $display("Test | brnz r2 -36 @ <T3 | a=0x0000003d, b=0xffffffdc, z=0x00000019 | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
-		#5; $display("Test | brnz r2 -36 @ >T3 | br_cond=0x1, pc=0x00000019 | br_cond=0x%h, pc=0x%h", branch_condition, _cpu._pc.d);
+		#5; $display("Test | brnz r2 -36 @ >T3 | br_cond=0x1, pc=0x00000019 | br_cond=0x%h, pc=0x%h", branch_condition, _cpu._pc.q);
 
 
 		// brpl r2, 35
@@ -549,13 +551,13 @@ module cpu_test;
 		// Condition is true, so expect pc to go up
 		alu_a_in_pc <= 1'b1; alu_b_in_constant <= 1'b1; pc_in_alu <= branch_condition; alu_add <= 1'b1;
 		#5; $display("Test | brpl r2 35 @ <T3 | a=0x0000001a, b=0x00000023, z=0x0000003d | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
-		#5; $display("Test | brpl r2 35 @ >T3 | br_cond=0x1, pc=0x0000003d | br_cond=0x%h, pc=0x%h", branch_condition, _cpu._pc.d);
+		#5; $display("Test | brpl r2 35 @ >T3 | br_cond=0x1, pc=0x0000003d | br_cond=0x%h, pc=0x%h", branch_condition, _cpu._pc.q);
 
 		// Reset PC after last branch (brpl r2 -36 @ pc = 61 = 0x3d)
 		next_instruction(61, "brpl r2 -36", 32'h9117ffdc);
 		alu_a_in_pc <= 1'b1; alu_b_in_constant <= 1'b1; pc_in_alu <= branch_condition; alu_add <= 1'b1;
 		#5; $display("Test | brpl r2 -36 @ <T3 | a=0x0000003e, b=0xffffffdc, z=0x0000001a | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
-		#5; $display("Test | brpl r2 -36 @ >T3 | br_cond=0x1, pc=0x0000001a | br_cond=0x%h, pc=0x%h", branch_condition, _cpu._pc.d);
+		#5; $display("Test | brpl r2 -36 @ >T3 | br_cond=0x1, pc=0x0000001a | br_cond=0x%h, pc=0x%h", branch_condition, _cpu._pc.q);
 
 
 		// brmi r2, 35
@@ -565,7 +567,7 @@ module cpu_test;
 		// Condition is false, so expect pc to remain the same
 		alu_a_in_pc <= 1'b1; alu_b_in_constant <= 1'b1; pc_in_alu <= branch_condition; alu_add <= 1'b1;
 		#5; $display("Test | brmi r2 35 @ <T3 | a=0x0000001b, b=0x00000023, z=0x0000003e | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
-		#5; $display("Test | brmi r2 35 @ >T3 | br_cond=0x0, pc=0x0000001b | br_cond=0x%h, pc=0x%h", branch_condition, _cpu._pc.d);
+		#5; $display("Test | brmi r2 35 @ >T3 | br_cond=0x0, pc=0x0000001b | br_cond=0x%h, pc=0x%h", branch_condition, _cpu._pc.q);
 
 
 		// Non-test instruction, to set up r1 for next jr r1 (ldi r1, 62)
@@ -583,7 +585,7 @@ module cpu_test;
 		pc_in_rf_a <= 1'b1;
 		alu_a_in_pc <= 1'b1; rf_in_alu <= 1'b1; alu_add <= 1'b1;
 		#5; $display("Test | jal r1 @ <T3 | a=0x0000001d, b=0x00000000, z=0x0000001d | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
-		#5; $display("Test | jal r1 @ >T3 | r15=0x0000001d, rf_a_out=0x0000003e, pc=0x0000003e | r15=0x%h, rf_a_out=0x%h, pc=0x%h", _cpu._rf.data[15], _cpu.rf_a_out, _cpu._pc.d);
+		#5; $display("Test | jal r1 @ >T3 | r15=0x0000001d, rf_a_out=0x0000003e, pc=0x0000003e | r15=0x%h, rf_a_out=0x%h, pc=0x%h", _cpu._rf.data[15], _cpu.rf_a_out, _cpu._pc.q);
 
 
 		// jr r15
@@ -591,7 +593,7 @@ module cpu_test;
 
 		// T3
 		pc_in_rf_a <= 1'b1;
-		#10; $display("Test | jr r15 @ T3 | rf_a_out=0x0000001d, pc=0x0000001d | rf_a_out=0x%h, pc=0x%h", _cpu.rf_a_out, _cpu._pc.d);
+		#10; $display("Test | jr r15 @ T3 | rf_a_out=0x0000001d, pc=0x0000001d | rf_a_out=0x%h, pc=0x%h", _cpu.rf_a_out, _cpu._pc.q);
 
 
 		// mfhi r2
@@ -615,7 +617,7 @@ module cpu_test;
 
 		// T3
 		output_en <= 1'b1;
-		#10; $display("Test | out r1 @ T3 | r1=0x0000003e, output_out=0x0000003e | r1=0x%h, output_out=0x%h", _cpu._rf.data[1], _cpu._out.d);
+		#10; $display("Test | out r1 @ T3 | r1=0x0000003e, output_out=0x0000003e | r1=0x%h, output_out=0x%h", _cpu._rf.data[1], _cpu._out.q);
 
 
 		// in r1

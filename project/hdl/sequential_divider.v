@@ -74,8 +74,8 @@ module sequential_divider #(
 	wire [DIV_BITS - 1:0] q_out, q_in, q_shifted, mar_sum;
 	wire a_positive, ma_negative, a_negative, q0;
 	
-	register #( .BITS(DIV_BITS + 1) ) _ra ( .q(a_in), .d(a_out), .en(1'b1), .clk(clk), .clr(clr) );
-	register #( .BITS(DIV_BITS) )     _rq ( .q(q_in), .d(q_out), .en(1'b1), .clk(clk), .clr(clr) );
+	register #( .BITS(DIV_BITS + 1) ) _ra ( .d(a_in), .q(a_out), .en(1'b1), .clk(clk), .clr(clr) );
+	register #( .BITS(DIV_BITS) )     _rq ( .d(q_in), .q(q_out), .en(1'b1), .clk(clk), .clr(clr) );
 	
 	// Step 1 (Division)
 	// Shift A and Q left one binary position
