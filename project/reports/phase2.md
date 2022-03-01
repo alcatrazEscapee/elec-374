@@ -14,8 +14,7 @@ The structure of our design is based on the 3-bus architecture referenced in the
 In addition to the specification in the Phase 1 and 2 documents, and the lab reader, we also implemented a IEEE-754 compliant floating point unit, which supports the following operations:
 
 - Casts (both signed and unsigned) to and from integers.
-- Floating point addition, subtraction, and multiplication.
-- An approximate algorithim for float reciprocal based on an IEEE paper.
+- Floating point addition, subtraction, and multiplication, and recriprocal.
 
 All of the modules we wrote have testbench modules included in the same module - for example, the `cpu` module has a `cpu_test` module both declared in the `cpu.v` file. We used a combination of a Makefile, and the ModelSim command line interface in order to run automatic tests. We use `$display()` calls to observe expected and actual outputs, and then report any differences by simulating the designs.
 
@@ -30,8 +29,29 @@ All our code is included in the attached `.zip` file. The module structure of th
 
 ## 2. Testbench Waveforms
 
-We tested all the required instructions in a single test module (the `cpu_test` one), via simulating them sequentially as they pass through the cpu. For this, we used the assembly program (included with the project submission, in `cpu_testbench.s`), which we wrote a primitive assembler to compile to a `.mem` file, which was loaded with Verilog's `$readmemh()` for the purpose of our testbench. The compiled output of this program is visible in `cpu_testbench.mem`.
+We tested all the required instructions in a single test module (the `cpu_test` one), via simulating them sequentially as they pass through the cpu. For this, we used the assembly program (included with the project submission, in `cpu_testbench.s`), which we wrote a primitive assembler to compile to a `.mem` file, which was loaded with Verilog's `$readmemh()` for the purpose of our testbench. The compiled output of this program is visible in `cpu_testbench.mem`, which is included with our Verilog code.
 
 // todo: view of the memory
 
 // todo: tests for ALL the instructions
+// Waveforms are already screenshoted, and are all consistient.
+
+ld r1, 85
+ld r0, 35(r1) // Loads from 35 + 10
+ldi r1, 85
+ldi r0, 35(r1)
+st 90, r1
+st 90(r1), r1
+addi r2, r1, -5
+andi r2, r1, 26
+ori r2, r1, 26
+brzr r2, 35
+brnz r2, 35 // Will branch to 60, branches back after
+brpl r2, 35 // Will branch to 61, branches back after
+jump_back_2:
+brmi r2, 35
+jal r1 // Will jump to r1 = 62
+mfhi r2
+mflo r2
+out r1
+in r1
