@@ -247,7 +247,7 @@ module cpu_test;
 		.lo_en(lo_en), .hi_en(hi_en),
 		.rf_in_alu(rf_in_alu), .rf_in_hi(rf_in_hi), .rf_in_lo(rf_in_lo), .rf_in_memory(rf_in_memory), .rf_in_fpu(1'b0), .rf_in_input(rf_in_input),
 		.alu_select({alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add}),
-		.fpu_select(12'b0), .fpu_mode(1'b0), // Disable FPU
+		.fpu_select(10'b0), .fpu_mode(1'b0), // Disable FPU
 		.ir_out(ir_out), .clk(clk), .clr(clr),
 		.input_en(input_en), .output_en(output_en),
 		.memory_en(memory_en),
@@ -280,15 +280,15 @@ module cpu_test;
 		begin
 			// T0
 			control_reset(); pc_increment <= 1'b1; ma_in_pc <= 1'b1;
-			#10 $display("Test | %s @ T0 | pc=%0d, ma=%0d | pc=%0d, ma=%0d", assembly, pc + 1, pc, _cpu._pc.q, _cpu._ma.q);
+			#10 $display("Test | %0s @ T0 | pc=%0d, ma=%0d | pc=%0d, ma=%0d", assembly, pc + 1, pc, _cpu._pc.q, _cpu._ma.q);
 
 			// T1
 			control_reset();
-			#10 $display("Test | %s @ T1 | md=0x%h | md=0x%h", assembly, instruction, _cpu._memory.data_out);
+			#10 $display("Test | %0s @ T1 | md=0x%h | md=0x%h", assembly, instruction, _cpu._memory.data_out);
 
 			// T2
 			control_reset(); ir_en <= 1'b1;
-			#10 $display("Test | %s @ T2 | ir=0x%h | ir=0x%h", assembly, instruction, _cpu._ir.q);
+			#10 $display("Test | %0s @ T2 | ir=0x%h | ir=0x%h", assembly, instruction, _cpu._ir.q);
 
 			// T3
 			control_reset();
@@ -628,7 +628,6 @@ module cpu_test;
 		#5; $display("Test | in r1 @ <T3 | input_out=0x55555555 | input_out=0x%h", _cpu._in.d);
 		#5; $display("Test | in r1 @ >T3 | r1=0x55555555 | r1=0x%h", _cpu._rf.data[1]);
 
-
-		$finish;
+		//$finish;
 	end
 endmodule
