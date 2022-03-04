@@ -40,7 +40,11 @@ class AssemblerTest(unittest.TestCase):
     def test_mflo(self): self.asm('mflo r2', '11000 0010 00000000000000000000000')
     def test_out(self): self.asm('out r1', '10110 0001 00000000000000000000000')
     def test_in(self): self.asm('in r1', '10101 0001 00000000000000000000000')
-        
+
+    # Misc
+    
+    def test_nop(self): self.asm('nop', '11001 000000000000000000000000000')
+    def test_halt(self): self.asm('halt', '11010 000000000000000000000000000')
 
     def asm(self, asm: str, binary: str):
         expected = hex(int('0b' + binary.replace(' ', '_'), 2))[2:].zfill(8) + ' // 000 : ' + asm

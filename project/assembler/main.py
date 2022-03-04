@@ -134,7 +134,7 @@ class Assembler:
         elif token in ('mfhi', 'mflo', 'in', 'out', 'jal', 'jr'):
             ra, *_ = tokens
             inst = register(ra, 23)
-        elif token in ('noop', 'halt'):
+        elif token in ('nop', 'halt'):
             inst = 0
         elif token in ('fadd', 'fsub', 'fmul', 'fgt', 'feq'):
             ra, rb, rc, *_ = tokens
