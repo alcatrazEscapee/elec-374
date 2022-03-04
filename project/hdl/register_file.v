@@ -1,7 +1,6 @@
 /**
- * A 32-bit, 16-register general purpose, dual ported register file.
- * r0 is disconnected, and assumed to be a zero register.
- * There are two concurrent read channels, so two operands can be read during a single clock cycle
+ * A N-bit, M-register, dual ported register file.
+ * Supports two independent reads, and one write per cycle.
  */
 module register_file #(
 	parameter WORDS = 16,
@@ -12,8 +11,8 @@ module register_file #(
 	input [ADDRESS_BITS - 1:0] addr_in,
 	input [ADDRESS_BITS - 1:0] addr_a,
 	input [ADDRESS_BITS - 1:0] addr_b,
-	output [31:0] data_a,
-	output [31:0] data_b,
+	output [BITS - 1:0] data_a,
+	output [BITS - 1:0] data_b,
 	input clk,
 	input clr
 );
