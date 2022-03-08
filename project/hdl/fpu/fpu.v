@@ -62,7 +62,6 @@ module fpu (
 		.en(fpu_frc), .clk(clk), .clr(clr)
 	);
 
-	
 	always @(*) begin
 		case (select)
 			10'b0000000001 : z = z_crf; // Signed Casts
@@ -83,24 +82,6 @@ endmodule
 
 `timescale 1ns/100ps
 module fpu_test;
-
-	// todo: remove all control signals
-	// Control Signals
-	reg ir_en;
-	reg pc_increment, pc_in_alu, pc_in_rf_a;
-	reg ma_in_pc, ma_in_alu;
-	reg alu_a_in_rf, alu_a_in_pc;
-	reg alu_b_in_rf, alu_b_in_constant;
-	reg lo_en, hi_en;
-	reg rf_in_alu, rf_in_hi, rf_in_lo, rf_in_memory, rf_in_fpu;
-	reg memory_en;
-		
-	reg alu_not, alu_neg, alu_div, alu_mul, alu_or, alu_and, alu_rol, alu_ror, alu_shl, alu_shr, alu_sub, alu_add;
-	reg fpu_feq, fpu_fgt, fpu_frc, fpu_fmul, fpu_fsub, fpu_fadd, fpu_cufr, fpu_curf, fpu_cfr, fpu_crf;
-	reg fpu_mode;
-	
-	wire [31:0] ir_out;
-	wire branch_condition;
 	
 	reg clk, clr;
 	
@@ -120,10 +101,11 @@ module fpu_test;
 	/**
 	 * Executes T0, T1, T2 steps
 	 */
-	 // todo: port the improvements to next_instruction from cpu_test
-	task next_instruction();
+	task next_instruction(input [31:0] pc, input [127:0] assembly, input [31:0] instruction);
 		begin
-			#30;
+			#10 $display("Test | %0s @ T0 | pc=%0d, ma=%0d | pc=%0d, ma=%0d", assembly, pc + 1, pc, _cpu._pc.q, _cpu._ma.q); // T0
+			#10 $display("Test | %0s @ T1 | md=0x%h | md=0x%h", assembly, instruction, _cpu._memory.data_out); // T1
+			#10 $display("Test | %0s @ T2 | ir=0x%h | ir=0x%h", assembly, instruction, _cpu._ir.q); // T2
 		end
 	endtask
 		
@@ -135,11 +117,7 @@ module fpu_test;
 	end
 
 	initial begin
-		// Zero all inputs
-		control_reset();
 		clr <= 1'b0;
-		
-		// Start
 		#11 clr <= 1'b1;
 		
 		// Initialize Memory
@@ -147,122 +125,72 @@ module fpu_test;
 		$readmemh("out/fpu_testbench.mem", _cpu._memory.data);
 
 		// Initialization
-		
-		// addi r1 r0 355
-		
-		next_instruction();
+				
+		next_instruction(0, "addi r1 r0 355", 32'h58800163);
 		#5 $display("Test | addi r1 r0 355 @ T3 | a=0, b=355, z=355 | a=%0d, b=%0d, z=%0d", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5 $display("Test | addi r1 r0 355 @ End | r1=355 | r1=%0d", _cpu._rf.data[1]);
 	
-		// addi r2 r0 113
-		
-		// T0
-		next_instruction();
+		next_instruction(1, "addi r2 r0 113", 32'h59000071);
 		#5 $display("Test | addi r2 r0 113 @ T3 | a=0, b=113, z=113 | a=%0d, b=%0d, z=%0d", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5 $display("Test | addi r2 r0 113 @ End | r2=113 | r2=%0d", _cpu._rf.data[2]);
-		
-		// ori r3 r0 0x4049
-		
-		// T0
-		next_instruction();
+				
+		next_instruction(2, "ori r3 r0 0x4049", 32'h69804049);
 		#5 $display("Test | ori r3 r0 0x4049 @ T3 | a=0, b=0x00004049, z=0x00004049 | a=%0d, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5 $display("Test | ori r3 r0 0x4049 @ End | r3=0x00004049 | r3=0x%h", _cpu._rf.data[3]);
 		
-		// addi r4 r0 16
-		
-		// T0
-		next_instruction();
+		next_instruction(3, "addi r4 r0 16", 32'h5a000010);
 		#5 $display("Test | addi r4 r0 16 @ T3 | a=0, b=16, z=16 | a=%0d, b=%0d, z=%0d", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5 $display("Test | addi r4 r0 16 @ End | r4=16 | r4=%0d", _cpu._rf.data[4]);
 		
-		// shl r3 r3 r4
-		
-		// T0
-		next_instruction();
+		next_instruction(4, "shl r3 r3 r4", 32'h319a0000);
 		#5 $display("Test | shl r3 r3 r4 @ T3 | a=0x00004049, b=16, z=0x40490000 | a=0x%h, b=%0d, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5 $display("Test | shl r3 r3 r4 @ End | r3=0x40490000 | r3=0x%h", _cpu._rf.data[3]);
 		
-		// ori r3 r3 0x0fdb
-		
-		// T0
-		next_instruction();
+		next_instruction(5, "ori r3 r3 0x0fdb", 32'h69980fdb);
 		#5 $display("Test | ori r3 r3 0x0fdb @ T3 | a=0x40490000, b=0x00000fdb, z=0x40490fdb | a=0x%h, b=0x%h, z=0x%h", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z);
 		#5 $display("Test | ori r3 r3 0x0fdb @ End | r3=0x40490fdb | r3=0x%h", _cpu._rf.data[3]);
-
-		// todo: implement control signals for the rest of these instructions
-		$finish;
 		
 		// ===============================================================
 		//                     Floating Point Unit Tests
 		// ===============================================================
-		
-		// crf f1 r1
-		
-		next_instruction();
-		fpu_mode <= 1'b1; fpu_crf <= 1'b1;
+				
+		next_instruction(6, "crf f1 r1", 32'hd8880000);
 		#5 $display("Test | crf f1 r1 @ T3 | a=0x00000163, z=0x43b18000 | a=0x%h, z=0x%h", _cpu._fpu.a, _cpu._fpu.z);
 		#5 $display("Test | crf f1 r1 @ End | f1=0x43b18000 | f1=0x%h", _cpu._rf.data[1]);
-		
-		// curf f2 r2
-		
-		next_instruction();
-		fpu_mode <= 1'b1; fpu_curf <= 1'b1; rf_in_fpu <= 1'b1;
+				
+		next_instruction(7, "curf f2 r2", 32'hd9100002);
 		#5 $display("Test | curf f2 r2 @ T3 | a=0x00000071, z=0x42e20000 | a=0x%h, z=0x%h", _cpu._fpu.a, _cpu._fpu.z);
 		#5 $display("Test | curf f2 r2 @ End | f2=0x42e20000 | f2=0x%h", _cpu._rf.data[2]);
-		
-		// fadd f4 f1 f3
-		
-		next_instruction();
-		fpu_mode <= 1'b1; fpu_fadd <= 1'b1; rf_in_fpu <= 1'b1;
+				
+		next_instruction(8, "fadd f4 f1 f3", 32'hda098004);
 		#5 $display("Test | fadd f4 f1 f3 @ T3 | a=0x43b18000, b=0x40490fdb, z=0x43b31220 | a=0x%h, b=0x%h, z=0x%h", _cpu._fpu.a, _cpu._fpu.b, _cpu._fpu.z);
 		#5 $display("Test | fadd f4 f1 f3 @ End | f4=0x43b31220 | f4=0x%h", _cpu._rf.data[4]);
-	
-		// frc f5 f2
-	
-		next_instruction();
-		fpu_mode <= 1'b1; fpu_frc <= 1'b1; alu_mul <= 1'b1; rf_in_fpu <= 1'b1;
+		
+		next_instruction(9, "frc f5 f2", 32'hda900007);
 		#80; // +8 Cycles
 		$display("Test | frc f5 f2 @ End | f5=0x3c10fa16 | f5=0x%h", _cpu._rf.data[5]);
-		
-		// fmul f5 f5 f1
-		
-		next_instruction();
-		fpu_mode <= 1'b1; fpu_fmul <= 1'b1; alu_mul <= 1'b1; rf_in_fpu <= 1'b1;
+				
+		next_instruction(10, "fmul f5 f5 f1", 32'hdaa88006);
 		#5 $display("Test | fmul f5 f5 f1 @ T3 | a=0x3c10fa16, b=0x43b18000, z=0x40490acd | a=0x%h, b=0x%h, z=0x%h", _cpu._fpu.a, _cpu._fpu.b, _cpu._fpu.z);
 		#5 $display("Test | fmul f5 f5 f1 @ End | f5=0x40490acd | f5=0x%h", _cpu._rf.data[5]);
-		
-		// fsub f6 f3 f5
-		
-		next_instruction();
-		fpu_mode <= 1'b1; fpu_fsub <= 1'b1; rf_in_fpu <= 1'b1;
+				
+		next_instruction(11, "fsub f6 f3 f5", 32'hdb1a8005);
 		#5 $display("Test | fsub f6 f3 f5 @ T3 | a=0x40490fdb, b=0x40490acd, z=0x39a1c000 | a=0x%h, b=0x%h, z=0x%h", _cpu._fpu.a, _cpu._fpu.b, _cpu._fpu.z);
 		#5 $display("Test | fsub f6 f3 f5 @ End | f6=0x39a1c000 | f6=0x%h", _cpu._rf.data[6]);
 		
-		// feq r1 f3 f5
-		
-		next_instruction();
-		fpu_mode <= 1'b1; fpu_feq <= 1'b1; rf_in_fpu <= 1'b1;
+		next_instruction(12, "feq r1 f3 f5", 32'hd89a8009);
 		#5 $display("Test | feq r1 f3 f5 @ T3 | a=0x40490fdb, b=0x40490acd, z=0 | a=0x%h, b=0x%h, z=%0b", _cpu._fpu.a, _cpu._fpu.b, _cpu._alu.z);
 		#5 $display("Test | feq r1 f3 f5 @ End | r1=0 | r1=%0b", _cpu._rf.data[1]);
-		
-		// fgt r2 f6 f0
-		
-		next_instruction();
-		fpu_mode <= 1'b1; fpu_fgt <= 1'b1; rf_in_fpu <= 1'b1;
+				
+		next_instruction(13, "fgt r2 f6 f0", 32'hd9300008);
 		#5 $display("Test | fgt r2 f5 f0 @ T3 | a=0x39a1c000, b=0x00000000, z=0 | a=0x%h, b=0x%h, z=%0b", _cpu._fpu.a, _cpu._fpu.b, _cpu._alu.z);
 		#5 $display("Test | fgt r2 f5 f0 @ End | r2=1 | r2=%0b", _cpu._rf.data[2]);
-		
-		// cfr r1 f6
-		
-		next_instruction();
-		fpu_mode <= 1'b1; fpu_cfr <= 1'b1; rf_in_fpu <= 1'b1;
+				
+		next_instruction(14, "cfr r1 f6", 32'hd8b00001);
 		#5 $display("Test | cfr r1 f6 @ T3 | a=0x39a1c000 | a=0x%h", _cpu._fpu.a);
 		#5 $display("Test | cfr r1 f6 @ End | r1=0 | r1=%0b", _cpu._rf.data[1]);
-		
-		// cufr r1 f6
-		
-		next_instruction();
-		fpu_mode <= 1'b1; fpu_cufr <= 1'b1; rf_in_fpu <= 1'b1;
+				
+		next_instruction(15, "cufr r1 f6", 32'hd8b00003);
 		#5 $display("Test | cufr r1 f6 @ T3 | a=0x39a1c000 | a=0x%h", _cpu._fpu.a);
 		#5 $display("Test | cufr r1 f6 @ End | r1=0 | r1=%0b", _cpu._rf.data[1]);
 	

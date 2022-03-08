@@ -46,6 +46,19 @@ class AssemblerTest(unittest.TestCase):
     def test_nop(self): self.asm('nop', '11001 000000000000000000000000000')
     def test_halt(self): self.asm('halt', '11010 000000000000000000000000000')
 
+    # FPU
+
+    def test_crf(self): self.asm('crf f2 r1', '11011 0010 0001 0000 00000000000 0000')
+    def test_cfr(self): self.asm('cfr r2 f1', '11011 0010 0001 0000 00000000000 0001')
+    def test_curf(self): self.asm('curf f2 r1', '11011 0010 0001 0000 00000000000 0010')
+    def test_cufr(self): self.asm('cufr r2 f1', '11011 0010 0001 0000 00000000000 0011')
+    def test_fadd(self): self.asm('fadd f1 f2 f3', '11011 0001 0010 0011 00000000000 0100')
+    def test_fsub(self): self.asm('fsub f1 f2 f3', '11011 0001 0010 0011 00000000000 0101')
+    def test_fmul(self): self.asm('fmul f1 f2 f3', '11011 0001 0010 0011 00000000000 0110')
+    def test_frc(self): self.asm('frc f1 f2', '11011 0001 0010 0000 00000000000 0111')
+    def test_fgt(self): self.asm('fgt r1 f2 f3', '11011 0001 0010 0011 00000000000 1000')
+    def test_feq(self): self.asm('feq r1 f2 f3', '11011 0001 0010 0011 00000000000 1001')
+
     def asm(self, asm: str, binary: str):
         expected = hex(int('0b' + binary.replace(' ', '_'), 2))[2:].zfill(8) + ' // 000 : ' + asm
         actual = main.assemble(asm)[0]

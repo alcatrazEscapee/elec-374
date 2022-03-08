@@ -83,7 +83,7 @@ The FPU defines one additional instruction type:
 
 Type | Fields
 ---|---
-F - Floating Point | `[5b - opcode][4b - FA][4b - FB][4b - FC][15b - FPU Opcode]`
+F - Floating Point | `[5b - opcode][4b - FA][4b - FB][4b - FC][11b - Unused][4b - FPU Opcode]`
 
 The "Floating Point" instruction has the following subinstructions based on the FPU opcode:
 
@@ -110,7 +110,7 @@ FPU Opcode | Name | Assembly | RTN
 - T1 Memory Read
 - T2 `IR <- Memory[MA]`
 
-Three Register (`add`, `sub`, `shr`, `shl`, `ror`, `rol`, `and`, `or`): `op rX, rY, rZ`
+Three Register (`add`, `sub`, `shr`, `shl`, `ror`, `rol`, `and`, `or`, all FPU except `frc`): `op rX, rY, rZ`
 
 - T3 `rX <- rY <op> rZ`
 
@@ -118,9 +118,17 @@ Two Register (`neg`, `not`): `op rX, rY`
 
 - T3 `rX <- rY <op> r0`
 
-Two Register Double (`mul`, `div`): `op rY, rZ`
+Multiply: `mul rY, rZ`
 
-- T3 `HI, LO <- rY <op> rZ`
+- T3 `HI, LO <- rY * rZ`
+
+Divide: `div rY, rZ`
+
+- DIV0 ... DIV30: `HI, LO <- RY / rZ`
+
+FPU Reciprocal: `frc f1 f2`
+
+- R0 ... R7: `f1 <- 1.0f / f2`
 
 Move Instructions (`mfhi`, `mflo`, `in`): `mov rX`
 
