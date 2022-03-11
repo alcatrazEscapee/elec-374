@@ -81,7 +81,7 @@ module alu(
 		case (select)
 			12'b000100000000 : {hi, lo} = {hi_mul, lo_mul};
 			12'b001000000000 : {hi, lo} = {hi_div, lo_div};
-			default          : {hi, lo} <= 64'b0;
+			default          : {hi, lo} = 64'b0;
 		endcase
 	end
 endmodule

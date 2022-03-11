@@ -7,7 +7,8 @@ module control_unit (
 	// Control Signals
 	output reg ir_en,
 	output reg pc_increment, output reg pc_in_alu, output reg pc_in_rf_a,
-	output reg ma_in_pc, output reg ma_in_alu,
+	output reg ma_en,
+	output reg memory_addr_in_pc, output reg memory_addr_in_ma,
 	output reg alu_a_in_rf, output reg alu_a_in_pc,
 	output reg alu_b_in_rf, output reg alu_b_in_constant,
 	output reg lo_en,
@@ -55,7 +56,8 @@ module control_unit (
 		// Default values
 		ir_en = 1'b0;
 		pc_increment = 1'b0; pc_in_alu = 1'b0; pc_in_rf_a = 1'b0;
-		ma_in_pc = 1'b0; ma_in_alu = 1'b0;
+		ma_en = 1'b0;
+		memory_addr_in_pc = 1'b0; memory_addr_in_ma = 1'b0;
 		alu_a_in_rf = 1'b0; alu_a_in_pc = 1'b0;
 		alu_b_in_rf = 1'b0; alu_b_in_constant = 1'b0;
 		lo_en = 1'b0; hi_en = 1'b0;
@@ -76,30 +78,31 @@ module control_unit (
 		case (step_out)
 			6'b000000 :
 				begin
-					// T0
+					// T1
+					// Instruction Fetch, PC Increment
 					pc_increment = 1'b1;
-					ma_in_pc = 1'b1;
+					memory_addr_in_pc = 1'b1;
 				end
 			6'b000001 :
-				begin
-					// T1
-					// Memory Read (Instruction)
-				end
-			6'b000010 :
 				begin
 					// T2
 					ir_en = 1'b1;
 				end
-			6'b000011 :
+			6'b000010 :
 				begin
 					// T3
 					control_t3();
 				end
-			6'b000100 : 
+			6'b000011 : 
 				begin
 					// T4 / RC1
-					if (opcode == 5'b00010) // Store
+					if (opcode == 5'b00000) // Load
 					begin
+						memory_addr_in_ma = 1'b1;
+					end
+					else if (opcode == 5'b00010) // Store
+					begin
+						memory_addr_in_ma = 1'b1;
 						memory_en = 1'b1;
 						step_next = 1'b0;
 					end
@@ -109,7 +112,7 @@ module control_unit (
 						alu_mul = 1'b1;
 					end
 				end
-			6'b000101 :
+			6'b000100 :
 				begin
 					// T5 / RC2
 					if (opcode == 5'b00000) // Load
@@ -123,7 +126,7 @@ module control_unit (
 						alu_mul = 1'b1;
 					end
 				end
-			6'b000110 :
+			6'b000101 :
 				begin
 					// FPU - Float Reciprocal - RC3
 					if (fpu_frc_mode)
@@ -132,7 +135,7 @@ module control_unit (
 						alu_mul = 1'b1;
 					end
 				end
-			6'b000111 :
+			6'b000110 :
 				begin
 					// FPU - Float Reciprocal - RC4
 					if (fpu_frc_mode)
@@ -141,7 +144,7 @@ module control_unit (
 						alu_mul = 1'b1;
 					end
 				end
-			6'b001000 :
+			6'b000111 :
 				begin
 					// FPU - Float Reciprocal - RC5
 					if (fpu_frc_mode)
@@ -149,7 +152,7 @@ module control_unit (
 						fpu_frc = 1'b1;
 					end
 				end
-			6'b001001 :
+			6'b001000 :
 				begin
 					// FPU - Float Reciprocal - RC6
 					if (fpu_frc_mode)
@@ -158,7 +161,7 @@ module control_unit (
 						alu_mul = 1'b1;
 					end
 				end
-			6'b001010 :
+			6'b001001 :
 				begin
 					// FPU - Float Reciprocal - RC7
 					if (fpu_frc_mode)
@@ -168,7 +171,7 @@ module control_unit (
 						step_next = 1'b0;
 					end
 				end
-			6'b100011 :
+			6'b100010 :
 				begin
 					// Divide - DIV32
 					if (opcode == 5'b01111) // Divide
@@ -192,10 +195,10 @@ module control_unit (
 		case (opcode)
 			5'b00000 : // Load
 				begin
+					ma_en = 1'b1;
+					alu_add = 1'b1;
 					alu_a_in_rf = 1'b1;
 					alu_b_in_constant = 1'b1;
-					ma_in_alu = 1'b1;
-					alu_add = 1'b1;
 				end
 			5'b00001 : // Load Immediate (Add Immediate)
 				begin
@@ -207,7 +210,7 @@ module control_unit (
 				end
 			5'b00010 : // Store
 				begin
-					ma_in_alu = 1'b1;
+					ma_en = 1'b1;
 					alu_add = 1'b1;
 					alu_a_in_rf = 1'b1;
 					alu_b_in_constant = 1'b1;

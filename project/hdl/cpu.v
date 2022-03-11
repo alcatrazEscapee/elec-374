@@ -14,17 +14,21 @@ module cpu (
 	input clr,
 	input halt
 );
+	localparam MEMORY_WORDS = 512;
+	localparam MEMORY_BITS = $clog2(MEMORY_WORDS);
+
 	// === Control Signals ===
 	// foo_en = Enable signal for writing to foo
 	// foo_in_bar = Enable signal for writing foo <= bar
 	wire ir_en;
-	wire pc_increment, pc_in_alu, pc_in_rf_a;
-	wire ma_in_pc, ma_in_alu;
+	wire pc_en, pc_increment, pc_in_alu, pc_in_rf_a;
+	wire ma_en;
+	wire memory_addr_in_pc, memory_addr_in_ma;
 	wire alu_a_in_rf, alu_a_in_pc;
 	wire alu_b_in_rf, alu_b_in_constant;
 	wire lo_en;
 	wire hi_en;
-	wire rf_in_alu, rf_in_hi, rf_in_lo, rf_in_memory, rf_in_fpu, rf_in_input;
+	wire rf_en, rf_in_alu, rf_in_hi, rf_in_lo, rf_in_memory, rf_in_fpu, rf_in_input;
 	wire output_en;
 	wire memory_en;
 
@@ -37,14 +41,23 @@ module cpu (
 	// We can exclude the A, B, Y and Z registers
 	// Memory has a built-in MD register (in inferred Quartus memory), so we exclude that as well
 	wire [31:0] pc_out, ir_out, ma_out, hi_out, lo_out, rf_a_out, rf_b_out, alu_z_out, alu_lo_out, alu_hi_out, constant_c, input_out, fpu_bridge_alu_a, fpu_bridge_alu_b, fpu_rz_out;
-	reg [31:0] pc_in, ma_in, alu_a_in, alu_b_in, rf_in;
+	reg [31:0] pc_in, alu_a_in, alu_b_in, rf_in;
 
-	wire pc_en, ma_en, rf_en;
-    reg branch_condition;
+   reg branch_condition;
 
 	// Memory Interface
 	// We don't need memory_in because it's always hard-wired to rf_b_out
+	// In T0, the PC is used to fetch memory address, in T4, the MA register is (for load + store instructions)
 	wire [31:0] memory_out;
+	reg [MEMORY_BITS - 1:0] memory_address;
+	
+	always @(*) begin
+		case ({memory_addr_in_pc, memory_addr_in_ma})
+			2'b01 : memory_address = ma_out[8:0];
+			2'b10 : memory_address = pc_out[8:0];
+			default : memory_address = 9'b0;
+		endcase
+	end
 
 	// Register File
 	wire [3:0] rf_a_addr, rf_b_addr, rf_z_addr;
@@ -105,18 +118,6 @@ module cpu (
 		endcase
 	end
 
-	// MA Register
-	// Control Signals: ma_in_pc, ma_in_alu
-	assign ma_en = ma_in_pc | ma_in_alu;
-
-	always @(*) begin
-		case ({ma_in_pc, ma_in_alu})
-			2'b01 : ma_in <= alu_z_out;
-			2'b10 : ma_in <= pc_out;
-			default : ma_in <= 32'b0;
-		endcase
-	end
-
 	// ALU Inputs
 	// Left input can be PC, rY, or driven by FPU
 	// Right input can be rX, constant C, or driven by FPU
@@ -166,14 +167,14 @@ module cpu (
 
 	register _pc  ( .d(pc_in),      .q(pc_out),     .en(pc_en),     .clk(clk), .clr(clr) );
 	register _ir  ( .d(memory_out), .q(ir_out),     .en(ir_en),     .clk(clk), .clr(clr) ); // IR in = Memory
-	register _ma  ( .d(ma_in),      .q(ma_out),     .en(ma_en),     .clk(clk), .clr(clr) );
+	register _ma  ( .d(alu_z_out),  .q(ma_out),     .en(ma_en),     .clk(clk), .clr(clr) ); // MA in = ALU out (T0 bypasses)
 	register _hi  ( .d(alu_hi_out), .q(hi_out),     .en(hi_en),     .clk(clk), .clr(clr) ); // HI and LO in = ALU out
 	register _lo  ( .d(alu_lo_out), .q(lo_out),     .en(lo_en),     .clk(clk), .clr(clr) );
 	register _in  ( .d(input_in),   .q(input_out),  .en(input_en),  .clk(clk), .clr(clr) ); // IN and OUT
 	register _out ( .d(rf_a_out),   .q(output_out), .en(output_en), .clk(clk), .clr(clr) );
 
-	memory #( .BITS(32), .WORDS(512) ) _memory (
-		.address(ma_out[8:0]),
+	memory #( .BITS(32), .WORDS(MEMORY_WORDS) ) _memory (
+		.address(memory_address),
 		.data_in(rf_b_out), // Data to Memory = RF B Out
 		.data_out(memory_out),
 		.en(memory_en),
@@ -210,28 +211,29 @@ module cpu (
 	);
 
 	control_unit _control (
-    		// Inputs
-    		.opcode(ir_opcode),
-			.fpu_opcode(ir_fpu_opcode),
-    		.branch_condition(branch_condition),
+		// Inputs
+		.opcode(ir_opcode),
+		.fpu_opcode(ir_fpu_opcode),
+		.branch_condition(branch_condition),
 
-    		// Control Signals
-    		.ir_en(ir_en),
-    		.pc_increment(pc_increment), .pc_in_alu(pc_in_alu), .pc_in_rf_a(pc_in_rf_a),
-    		.ma_in_pc(ma_in_pc), .ma_in_alu(ma_in_alu),
-    		.alu_a_in_rf(alu_a_in_rf), .alu_a_in_pc(alu_a_in_pc),
-    		.alu_b_in_rf(alu_b_in_rf), .alu_b_in_constant(alu_b_in_constant),
-    		.lo_en(lo_en), .hi_en(hi_en),
-    		.rf_in_alu(rf_in_alu), .rf_in_hi(rf_in_hi), .rf_in_lo(rf_in_lo), .rf_in_memory(rf_in_memory), .rf_in_fpu(rf_in_fpu), .rf_in_input(rf_in_input),
-    		.output_en(output_en),
-    		.memory_en(memory_en),
+		// Control Signals
+		.ir_en(ir_en),
+		.pc_increment(pc_increment), .pc_in_alu(pc_in_alu), .pc_in_rf_a(pc_in_rf_a),
+		.ma_en(ma_en),
+		.memory_addr_in_ma(memory_addr_in_ma), .memory_addr_in_pc(memory_addr_in_pc),
+		.alu_a_in_rf(alu_a_in_rf), .alu_a_in_pc(alu_a_in_pc),
+		.alu_b_in_rf(alu_b_in_rf), .alu_b_in_constant(alu_b_in_constant),
+		.lo_en(lo_en), .hi_en(hi_en),
+		.rf_in_alu(rf_in_alu), .rf_in_hi(rf_in_hi), .rf_in_lo(rf_in_lo), .rf_in_memory(rf_in_memory), .rf_in_fpu(rf_in_fpu), .rf_in_input(rf_in_input),
+		.output_en(output_en),
+		.memory_en(memory_en),
 
-    		.alu_select(alu_select),
-    		.fpu_select(fpu_select),
-    		.fpu_mode(fpu_mode), // 0 = ALU, 1 = FPU
+		.alu_select(alu_select),
+		.fpu_select(fpu_select),
+		.fpu_mode(fpu_mode), // 0 = ALU, 1 = FPU
 
-    		.clk(clk), .clr(clr), .halt(halt)
-    	);
+		.clk(clk), .clr(clr), .halt(halt)
+	);
 
 endmodule
 
@@ -256,12 +258,11 @@ module cpu_test;
 	);
 
 	/**
-	 * Computes and tests the T0, T1 and T2 steps.
+	 * Computes and tests the T1 and T2 steps.
 	 */
 	task next_instruction(input [31:0] pc, input [127:0] assembly, input [31:0] instruction);
 		begin
-			#10 $display("Test | %0s @ T0 | pc=%0d, ma=%0d | pc=%0d, ma=%0d", assembly, pc + 1, pc, _cpu._pc.q, _cpu._ma.q); // T0
-			#10 $display("Test | %0s @ T1 | md=0x%h | md=0x%h", assembly, instruction, _cpu._memory.data_out); // T1
+			#10 $display("Test | %0s @ T1 | pc=%0d, md=0x%h | pc=%0d, md=0x%h", assembly, pc + 1, instruction, _cpu._pc.q, _cpu._memory.data_out); // T1
 			#10 $display("Test | %0s @ T2 | ir=0x%h | ir=0x%h", assembly, instruction, _cpu._ir.q); // T2
 		end
 	endtask

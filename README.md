@@ -106,9 +106,8 @@ FPU Opcode | Name | Assembly | RTN
 
 #### Instruction Fetch (Common to all instructions):
 
-- T0 `PC <- PC + 1`, `MA <- PC`
-- T1 Memory Read
-- T2 `IR <- Memory[MA]`
+- T1 `PC <- PC + 1`, `MD <- Memory[PC]`
+- T2 `IR <- MD`
 
 Three Register (`add`, `sub`, `shr`, `shl`, `ror`, `rol`, `and`, `or`, all FPU except `frc`): `op rX, rY, rZ`
 

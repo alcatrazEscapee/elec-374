@@ -93,18 +93,12 @@ module fpu_test;
 		.halt(1'b0)
 	);
 	
-	// todo: remove
-	task control_reset();
-		begin end
-	endtask
-	
 	/**
-	 * Executes T0, T1, T2 steps
+	 * Executes T1, T2 steps
 	 */
 	task next_instruction(input [31:0] pc, input [127:0] assembly, input [31:0] instruction);
 		begin
-			#10 $display("Test | %0s @ T0 | pc=%0d, ma=%0d | pc=%0d, ma=%0d", assembly, pc + 1, pc, _cpu._pc.q, _cpu._ma.q); // T0
-			#10 $display("Test | %0s @ T1 | md=0x%h | md=0x%h", assembly, instruction, _cpu._memory.data_out); // T1
+			#10 $display("Test | %0s @ T1 | pc=%0d, md=0x%h | pc=%0d, md=0x%h", assembly, pc + 1, instruction, _cpu._pc.q, _cpu._memory.data_out); // T1
 			#10 $display("Test | %0s @ T2 | ir=0x%h | ir=0x%h", assembly, instruction, _cpu._ir.q); // T2
 		end
 	endtask
