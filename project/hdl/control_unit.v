@@ -178,7 +178,7 @@ module control_unit (
 					begin
 						// Technically alu_div = 1 invokes the divider 32-cycle sequence again
 						// However it doesn't actually make any difference in the long run - it can be restarted from the middle with no consequence.
-						alu_div <= 1'b1;
+						alu_div = 1'b1;
 						hi_en = 1'b1;
 						lo_en = 1'b1;
 						step_next = 1'b0;
