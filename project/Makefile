@@ -54,6 +54,7 @@ clean-outputs :
 	rm -rf work
 	rm -f cpu_nativelink_simulation.rpt
 	rm -f transcript
+	rm -f cpu.mif
 
 .PHONY : compile-all
 compile-all : $(WORK) $(OUTPUTS) $(MEMORY) $(FPU_OUT)
@@ -99,6 +100,9 @@ $(OUTPUTS) : $(WORK)/%/_primary.vhd : %.v
 
 $(OUT)/%.mem : $(ASM)/%.s assembler/main.py
 	mkdir -p $(OUT)
-	$(ASSEMBLER) $< -o $@
+	$(ASSEMBLER) $< -o $@ -m ./cpu.mif
 	mkdir -p $(SIMULATION)/$(OUT)
 	cp $@ $(SIMULATION)/$@
+
+cpu.mif : $(ASM)/phase3_testbench.s assembler/main.py
+	$(ASSEMBLER) $< -m ./cpu.mif

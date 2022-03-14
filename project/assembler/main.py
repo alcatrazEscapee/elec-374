@@ -8,26 +8,56 @@ import re
 from argparse import ArgumentParser, Namespace
 from typing import List, Tuple, Dict
 
+MEMORY_SIZE = 512
+
+MIF_PREFIX = """
+DEPTH = {memory_size}; -- Memory Size (words)
+WIDTH = 32; -- Data Width (bits)
+
+ADDRESS_RADIX = UNS;
+DATA_RADIX = HEX;
+
+CONTENT
+BEGIN
+""".strip().format(memory_size=MEMORY_SIZE)
+
 
 def parse_command_line_args() -> Namespace:
     parser = ArgumentParser('Primitive Assembler')
     parser.add_argument('input_file', type=str, help='Input Assembly')
-    parser.add_argument('-o', type=str, default=None, dest='output_file', help='Output file')
+    parser.add_argument('-o', type=str, default=None, dest='output_file', help='Output .mem')
+    parser.add_argument('-m', type=str, default=None, dest='output_mif', help='Output .mif')
 
     return parser.parse_args()
 
 def main(args: Namespace):
     input_file = args.input_file
     output_file = args.output_file if args.output_file is not None else input_file.replace('.s', '.mem')
+    output_mif = args.output_mif
 
     with open(input_file, 'r', encoding='utf-8') as f:
         text = f.read()
     
-    lines = assemble(text)
+    lines, mif = assemble(text)
 
     with open(output_file, 'w', encoding='utf-8') as f:
         for line in lines:
             f.write(line + '\n')
+    
+    if output_mif is not None:
+        with open(output_mif, 'w', encoding='utf-8') as f:
+            f.write(MIF_PREFIX + '\n')
+            i = j = -1
+            for i in range(MEMORY_SIZE):
+                if i in mif:
+                    # Pad previous addresses
+                    if j != -1 and j < i - 1:
+                        f.write('[%3d..%3d] : 00000000;\n' % (j + 1, i - 1))
+                    f.write('%3d : %s\n' % (i, mif[i]))
+                    j = i
+            if j != -1 and j < i - 1:
+                f.write('[%3d..%3d] : 00000000;\n' % (j + 1, i))
+            f.write('\nEND\n')
 
 
 def assemble(text: str):
@@ -44,7 +74,7 @@ class Assembler:
         self.line: str = ''
         self.code_point: int = 0
 
-    def try_assemble(self) -> List[str]:
+    def try_assemble(self) -> Tuple[List[str], Dict[int, str]]:
         try:
             self.assemble()
         except Exception as e:
@@ -55,6 +85,7 @@ class Assembler:
                 raise RuntimeError('Undefined label: %s' % label)
         
         lines = []
+        mif = {}
         reverse_labels = {i: label for label, i in self.labels.items()}
         for i in range(1 + max(self.output.keys())):
             if i in self.output:
@@ -63,11 +94,16 @@ class Assembler:
                     code |= (self.labels[label] - i - 1) & ((1 << 19) - 1)
                 if i in reverse_labels:
                     comment = '%s: %s' % (reverse_labels[i], comment.strip())
-                lines.append('%s // %03d : %s' % (hex(code)[2:].zfill(8), i, comment.strip()))
+                
+                instruction = hex(code)[2:].zfill(8)
+                comment = comment.strip()
+                
+                lines.append('%s // %03d : %s' % (instruction, i, comment))
+                mif[i] = instruction + ';' + ('' if comment == '' else ' -- ' + comment)
             else:
                 lines.append('00000000 // %03d' % i)
         
-        return lines
+        return lines, mif
 
     def assemble(self):
         for line_no, line in enumerate(self.lines):

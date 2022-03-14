@@ -12,7 +12,7 @@ module memory #(
 );
 	// Inferred by Quartus into built in memory
 	// Includes a register buffered output, so no MD register is required
-	reg [BITS - 1:0] data [WORDS - 1:0];
+	(* ram_init_file = "cpu.mif" *) reg [BITS - 1:0] data [WORDS - 1:0];
 	
 	always @(posedge clk) begin
 		if (en)
