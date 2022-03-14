@@ -61,7 +61,7 @@ class AssemblerTest(unittest.TestCase):
 
     def asm(self, asm: str, binary: str):
         expected = hex(int('0b' + binary.replace(' ', '_'), 2))[2:].zfill(8) + ' // 000 : ' + asm
-        actual = main.assemble(asm)[0]
+        (actual, *_), *_ = main.assemble(asm)
         self.assertEqual(actual, expected, 'Assembly:\n%s\nBinary:\n%s\nExpected:\n%s\nActual:\n%s' % (asm, binary, expected, actual))
 
 
