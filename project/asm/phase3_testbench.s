@@ -52,3 +52,9 @@ subA:
     sub r8, r11, r13    // r9 = 0x96, r8 = 0x1F
     sub r9, r9, r8      // r13 = 0x77
     jr r15              // return
+
+.org 0x58
+    .mem 0x34
+
+.org 0x75
+    .mem 0x56
