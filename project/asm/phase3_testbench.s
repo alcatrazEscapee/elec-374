@@ -30,7 +30,8 @@ target:
     rol r2, r2, r0      // r2 = 0xCC
     or r2, r3, r0       // r2 = 0xCD
     and r1, r2, r1      // r1 = 0x8
-    st 0x67(r1), r2     // Memory[0x75] = 0xCD
+    // Phase 3 Spec suggests this should be Memory[0x75], it does decimal addition rather than treating these as hex
+    st 0x67(r1), r2     // Memory[0x6f] = 0xCD
     sub r3, r2, r3      // r3 = 1
     shl r1, r2, r0      // r1 = 0x19A
     ldi r4, 5           // r4 = 5

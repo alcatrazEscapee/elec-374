@@ -295,10 +295,7 @@ module cpu_test;
 		$display("Initializing Memory");
 		$readmemh("out/phase3_testbench.mem", _cpu._memory.data);
 		
-		while (~is_halted) begin
-			$display("PC = %0d, r0=%0h, r3=%h, r4=%0h, r7=%0h, ma=%h, rf_b=%0h, m[58]=%0h, addr=%0h, madr_ma=%b, men=%b", _cpu._pc.q, _cpu._rf.data[0], _cpu._rf.data[3], _cpu._rf.data[4], _cpu._rf.data[7], _cpu._ma.q, _cpu.rf_b_out, _cpu._memory.data[9'h66], _cpu.memory_address, _cpu.memory_addr_in_ma, _cpu.memory_en);
-			#10;
-		end
+		while (~is_halted) #10;
 		
 		$display("Test | r0  | r0  = 0x00000001 | r0  = 0x%h", _cpu._rf.data[0]);
 		$display("Test | r1  | r1  = 0x0000019a | r1  = 0x%h", _cpu._rf.data[1]);
@@ -317,8 +314,8 @@ module cpu_test;
 		$display("Test | r14 | r14 = 0x00000000 | r14 = 0x%h", _cpu._rf.data[14]);
 		$display("Test | r15 | r15 = 0x00000028 | r15 = 0x%h", _cpu._rf.data[15]);
 		
-		$display("Test | Memory[0x58] | Memory[0x58] = 0x66 | Memory[0x58] = 0x%h", _cpu._memory.data[9'h66]);
-		$display("Test | Memory[0x75] | Memory[0x75] = 0xcd | Memory[0x75] = 0x%h", _cpu._memory.data[9'h75]);
+		$display("Test | Memory[0x58] | Memory[0x58] = 0x00000066 | Memory[0x58] = 0x%h", _cpu._memory.data[9'h58]);
+		$display("Test | Memory[0x6f] | Memory[0x6f] = 0x000000cd | Memory[0x6f] = 0x%h", _cpu._memory.data[9'h6f]);
 		
 		$display("Test | HI, LO | HI = 0x00000004, LO = 0x00000005 | HI = 0x%h, LO = 0x%h", _cpu._hi.q, _cpu._lo.q);
 
