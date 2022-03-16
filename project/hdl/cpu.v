@@ -83,10 +83,10 @@ module cpu (
 
 	always @(*) begin
 		case ({pc_increment, pc_in_alu, pc_in_rf_a})
-			3'b001 : pc_in <= rf_a_out;
-			3'b010 : pc_in <= alu_z_out;
-			3'b100 : pc_in <= pc_plus_1;
-			default : pc_in <= 32'b0;
+			3'b001 : pc_in = rf_a_out;
+			3'b010 : pc_in = alu_z_out;
+			3'b100 : pc_in = pc_plus_1;
+			default : pc_in = 32'b0;
 		endcase
 	end
 
@@ -122,6 +122,7 @@ module cpu (
 			2'b01 : branch_condition = rf_a_out != 32'b0;
 			2'b10 : branch_condition = !rf_a_out[31] && (| rf_a_out[30:0]); // sign bit = 0 and any other bit != 0 => Positive
 			2'b11 : branch_condition = rf_a_out[31]; // sign bit = 1 => Negative
+			default : branch_condition = 1'b0;
 		endcase
 	end
 
@@ -131,17 +132,17 @@ module cpu (
 	// Control Signals: alu_a_in_rf, alu_a_in_pc, alu_b_in_rf, alu_b_in_constant
 	always @(*) begin
 		case ({fpu_mode, alu_a_in_rf, alu_a_in_pc})
-			3'b001 : alu_a_in <= pc_out;
-			3'b010 : alu_a_in <= rf_a_out;
-			3'b100 : alu_a_in <= fpu_bridge_alu_a;
-			default : alu_a_in <= 32'b0;
+			3'b001 : alu_a_in = pc_out;
+			3'b010 : alu_a_in = rf_a_out;
+			3'b100 : alu_a_in = fpu_bridge_alu_a;
+			default : alu_a_in = 32'b0;
 		endcase
 
 		case ({fpu_mode, alu_b_in_rf, alu_b_in_constant})
-			3'b001 : alu_b_in <= constant_c;
-			3'b010 : alu_b_in <= rf_b_out;
-			3'b100 : alu_b_in <= fpu_bridge_alu_b;
-			default : alu_b_in <= 32'b0;
+			3'b001 : alu_b_in = constant_c;
+			3'b010 : alu_b_in = rf_b_out;
+			3'b100 : alu_b_in = fpu_bridge_alu_b;
+			default : alu_b_in = 32'b0;
 		endcase
 	end
 
@@ -151,13 +152,13 @@ module cpu (
 
 	always @(*) begin
 		case ({rf_in_input, rf_in_fpu, rf_in_alu, rf_in_hi, rf_in_lo, rf_in_memory})
-			6'b000001 : rf_in <= memory_out;
-			6'b000010 : rf_in <= lo_out;
-			6'b000100 : rf_in <= hi_out;
-			6'b001000 : rf_in <= alu_z_out;
-			6'b010000 : rf_in <= fpu_rz_out;
-			6'b100000 : rf_in <= input_out;
-			default : rf_in <= 32'b0;
+			6'b000001 : rf_in = memory_out;
+			6'b000010 : rf_in = lo_out;
+			6'b000100 : rf_in = hi_out;
+			6'b001000 : rf_in = alu_z_out;
+			6'b010000 : rf_in = fpu_rz_out;
+			6'b100000 : rf_in = input_out;
+			default : rf_in = 32'b0;
 		endcase
 	end
 
