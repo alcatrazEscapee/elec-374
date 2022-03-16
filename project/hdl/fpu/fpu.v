@@ -90,7 +90,8 @@ module fpu_test;
 		.output_out(),
 		.clk(clk),
 		.clr(clr),
-		.halt(1'b0)
+		.halt(1'b0),
+		.is_halted()
 	);
 	
 	/**
