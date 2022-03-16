@@ -634,8 +634,6 @@ module control_unit_test;
 		next_instruction(23, "brzr r2 35", 32'h91000023);
 		#5; $display("Test | brzr r2 35 @ <T3 | a=0x00000018, b=0x00000023, z=0x0000003b, br_cond=0, pc_in_alu=0 | a=0x%h, b=0x%h, z=0x%h, br_cond=%b, pc_in_alu=%b", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z, _cpu.branch_condition, _cpu.pc_in_alu);
 		#5; $display("Test | brzr r2 35 @ >T3 | pc=0x00000018 | pc=0x%h", _cpu._pc.q);
-
-		$finish;
 		
 		next_instruction(24, "brnz r2 35", 32'h91080023);
 		#5; $display("Test | brnz r2 35 @ <T3 | a=0x00000019, b=0x00000023, z=0x0000003c, br_cond=1, pc_in_alu=1 | a=0x%h, b=0x%h, z=0x%h, br_cond=%b, pc_in_alu=%b", _cpu._alu.a, _cpu._alu.b, _cpu._alu.z, _cpu.branch_condition, _cpu.pc_in_alu);
