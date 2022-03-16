@@ -104,5 +104,5 @@ $(OUT)/%.mem : $(ASM)/%.s assembler/main.py
 	mkdir -p $(SIMULATION)/$(OUT)
 	cp $@ $(SIMULATION)/$@
 
-cpu.mif : $(ASM)/phase3_testbench.s assembler/main.py
+cpu.mif : $(ASM)/phase4_testbench.s assembler/main.py
 	$(ASSEMBLER) $< -m ./cpu.mif

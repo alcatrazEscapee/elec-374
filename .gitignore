@@ -4,28 +4,44 @@
 !/.editorconfig
 !/README.md
 
+# Actions
 !/.github/**/*.yml
 
+# Reports / Spec Documents
 !/docs/**/*.pdf
 
+# Project Unique Files
 !/project/Makefile
-
-!/project/assembler/main.py
-!/project/assembler/test.py
-!/project/test/setup.py
-
-!/project/src/**/*.c
-!/project/src/**/*.h
-
-!/project/asm/**/*.s
-
-!/project/hdl/**/*.v
 !/project/cpu.qpf
 !/project/cpu.qsf
 !/project/cpu.sdc
 
+# Assembler
+!/project/assembler/main.py
+!/project/assembler/test.py
+
+# Test Architecture
+!/project/test/setup.py
+
+# FPU C Library
+!/project/src/**/*.c
+!/project/src/**/*.h
+
+# Assembly Files
+!/project/asm/**/*.s
+
+# Quartus Project Source Code
+!/project/hdl/**/*.v
+
+# Quartus Project Generated Files
+!/project/generated/**/*.ppf
+!/project/generated/**/*.qip
+!/project/generated/**/*.v
+
+# Reports / Assignments
 !/project/reports/**/*.md
 !/project/reports/**/*.png
 !/project/reports/**/*.pdf
 
+# Exclusions
 __pycache__
