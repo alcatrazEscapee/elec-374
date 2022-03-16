@@ -1,12 +1,12 @@
 /**
- * cpu: top-level module for the CPU.
+ * cpu: top-level module for the CPU, as defined in the specification document.
+ * Does not contain any DE0 specific logic.
  */
 module cpu (
 	// I/O
 	input [31:0] input_in,
 	output [31:0] output_out,
 
-	// Weird?
 	input input_en,
 	
 	// Standard
@@ -21,8 +21,7 @@ module cpu (
 	localparam MEMORY_BITS = $clog2(MEMORY_WORDS);
 	
 	// === Status Signals ===
-	// run indicates whether the CPU is running (1) or is halted (0)
-	// (defined in inputs)
+	// is_halted indicates whether the CPU is running (0) or is halted (1)
 
 	// === Control Signals ===
 	// foo_en = Enable signal for writing to foo
@@ -60,8 +59,8 @@ module cpu (
 	
 	always @(*) begin
 		case ({memory_addr_in_pc, memory_addr_in_ma})
-			2'b01 : memory_address = ma_out[8:0];
-			2'b10 : memory_address = pc_out[8:0];
+			2'b01 : memory_address = ma_out[MEMORY_BITS - 1:0];
+			2'b10 : memory_address = pc_out[MEMORY_BITS - 1:0];
 			default : memory_address = 9'b0;
 		endcase
 	end
@@ -177,7 +176,7 @@ module cpu (
 
 	register _pc  ( .d(pc_in),      .q(pc_out),     .en(pc_en),     .clk(clk), .clr(clr) );
 	register _ir  ( .d(memory_out), .q(ir_out),     .en(ir_en),     .clk(clk), .clr(clr) ); // IR in = Memory
-	register _ma  ( .d(alu_z_out),  .q(ma_out),     .en(ma_en),     .clk(clk), .clr(clr) ); // MA in = ALU out (T0 bypasses)
+	register _ma  ( .d(alu_z_out),  .q(ma_out),     .en(ma_en),     .clk(clk), .clr(clr) ); // MA in = ALU out
 	register _hi  ( .d(alu_hi_out), .q(hi_out),     .en(hi_en),     .clk(clk), .clr(clr) ); // HI and LO in = ALU out
 	register _lo  ( .d(alu_lo_out), .q(lo_out),     .en(lo_en),     .clk(clk), .clr(clr) );
 	register _in  ( .d(input_in),   .q(input_out),  .en(input_en),  .clk(clk), .clr(clr) ); // IN and OUT
@@ -198,7 +197,7 @@ module cpu (
 		.hi(alu_hi_out),
 		.lo(alu_lo_out),
 		.select(alu_select),
-		.divide_by_zero(), // todo: exception handling
+		.divide_by_zero(),
 		.clk(clk),
 		.clr(clr)
 	);
@@ -210,7 +209,7 @@ module cpu (
 		.b(rf_b_out),
 		.z(fpu_rz_out),
 		.select(fpu_select),
-		.cast_out_of_bounds(), // todo: exception handling
+		.cast_out_of_bounds(),
 		.cast_undefined(),
 		.alu_a(fpu_bridge_alu_a),
 		.alu_b(fpu_bridge_alu_b),

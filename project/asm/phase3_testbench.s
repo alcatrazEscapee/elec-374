@@ -1,13 +1,10 @@
 // Phase 3 Example Program
-// All '$X' constants are interpreted as hex
-// The return address register was changed from r14 to r15, in compliance with the spec.
-
 .org 0
     ldi r3, 0x87        // r3 = 0x87
     ldi r3, 1(r3)       // r3 = 0x88
-    ld r2, 0x75         // r2 = (0x75) = 0x56
+    ld r2, 0x75         // r2 = Memory[0x75] = 0x56
     ldi r2, -2(r2)      // r2 = 0x54
-    ld r1, 4(r2)        // r1 = (0x58) = 0x34
+    ld r1, 4(r2)        // r1 = Memory[0x58] = 0x34
     ldi r0, 1           // r0 = 1
     ldi r3, 0x73        // r3 = 0x73
     brmi r3, 3          // branch not taken
@@ -30,8 +27,10 @@ target:
     rol r2, r2, r0      // r2 = 0xCC
     or r2, r3, r0       // r2 = 0xCD
     and r1, r2, r1      // r1 = 0x8
-    // Phase 3 Spec suggests this should be Memory[0x75], it does decimal addition rather than treating these as hex
-    st 0x67(r1), r2     // Memory[0x6f] = 0xCD
+    // Phase 3 Spec suggests this should be Memory[0x75], this is an error
+    // It does decimal addition rather than treating these as hex
+    // The actual memory value that is written to is Memory[0x6F]
+    st 0x67(r1), r2     // Memory[0x6F] = 0xCD
     sub r3, r2, r3      // r3 = 1
     shl r1, r2, r0      // r1 = 0x19A
     ldi r4, 5           // r4 = 5
@@ -54,6 +53,8 @@ subA:
     add r9, r10, r12    // r9 = 0x96
     sub r8, r11, r13    // r8 = 0x1F
     sub r9, r9, r8      // r9 = 0x77
+    // The spec used r14 as the return address - this is incorrect
+    // The return address register was changed to r15 here.
     jr r15              // return
 
 .org 0x58
