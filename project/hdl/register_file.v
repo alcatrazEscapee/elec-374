@@ -14,14 +14,15 @@ module register_file #(
 	output [BITS - 1:0] data_a,
 	output [BITS - 1:0] data_b,
 	input clk,
-	input clr
+	input clr,
+	input en
 );
 	wire [BITS - 1:0] data [WORDS - 1:0];
 	
 	genvar i;
 	generate
 		for (i = 0; i < WORDS; i = i + 1) begin : gen_r
-			register ri ( .d(data_in), .q(data[i]), .clk(clk), .clr(clr), .en(addr_in == i) );
+			register ri ( .d(data_in), .q(data[i]), .clk(clk), .clr(clr), .en(en & (i == addr_in)) );
 		end
 	endgenerate
 	
@@ -37,9 +38,9 @@ module register_file_test;
 	reg [31:0] z;
 	reg [3:0] addr_z, addr_a, addr_b;
 	wire [31:0] a, b;
-	reg clk, clr;
+	reg clk, clr, en;
 	
-	register_file rf ( .data_in(z), .addr_in(addr_z), .addr_a(addr_a), .addr_b(addr_b), .data_a(a), .data_b(b), .clk(clk), .clr(clr) );
+	register_file rf ( .data_in(z), .addr_in(addr_z), .addr_a(addr_a), .addr_b(addr_b), .data_a(a), .data_b(b), .clk(clk), .clr(clr), .en(en) );
 	
 	// Clock
 	initial begin
@@ -51,6 +52,7 @@ module register_file_test;
 	initial begin
 		#7 // Offset so we're in the middle of the positive clock signal
 		clr <= 1'b1; // clr is assumed to work as it's only connected to the internal register's clr line
+		en <= 1'b1;
 		
 		// Write some data
 		z <= 853;
@@ -67,6 +69,7 @@ module register_file_test;
 		#10;
 		
 		addr_z <= 0;
+		en <= 1'b0;
 		
 		// Read data back again, checking both channels
 		addr_a <= 11;

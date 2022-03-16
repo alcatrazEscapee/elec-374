@@ -9,7 +9,7 @@ module control_unit (
 	output reg pc_increment, output pc_in_alu, output reg pc_in_rf_a,
 	output reg ma_en,
 	output reg memory_addr_in_pc, output reg memory_addr_in_ma,
-	output reg alu_a_in_rf, output reg alu_a_in_pc,
+	output reg alu_a_in_rf, output reg alu_a_in_rf_non_zero, output reg alu_a_in_pc,
 	output reg alu_b_in_rf, output reg alu_b_in_constant,
 	output reg lo_en,
 	output reg hi_en,
@@ -70,7 +70,7 @@ module control_unit (
 		pc_in_rf_a = 1'b0;
 		ma_en = 1'b0;
 		memory_addr_in_pc = 1'b0; memory_addr_in_ma = 1'b0;
-		alu_a_in_rf = 1'b0; alu_a_in_pc = 1'b0;
+		alu_a_in_rf = 1'b0; alu_a_in_rf_non_zero = 1'b0; alu_a_in_pc = 1'b0;
 		alu_b_in_rf = 1'b0; alu_b_in_constant = 1'b0;
 		lo_en = 1'b0; hi_en = 1'b0;
 		rf_in_alu = 1'b0; rf_in_hi = 1'b0; rf_in_lo = 1'b0; rf_in_memory = 1'b0; rf_in_input = 1'b0; rf_in_fpu = 1'b0;
@@ -215,12 +215,12 @@ module control_unit (
 				begin
 					ma_en = 1'b1;
 					alu_add = 1'b1;
-					alu_a_in_rf = 1'b1;
+					alu_a_in_rf_non_zero = 1'b1;
 					alu_b_in_constant = 1'b1;
 				end
 			5'b00001 : // Load Immediate (Add Immediate)
 				begin
-					alu_a_in_rf = 1'b1;
+					alu_a_in_rf_non_zero = 1'b1;
 					alu_b_in_constant = 1'b1;
 					rf_in_alu = 1'b1;
 					alu_add = 1'b1;
@@ -230,7 +230,7 @@ module control_unit (
 				begin
 					ma_en = 1'b1;
 					alu_add = 1'b1;
-					alu_a_in_rf = 1'b1;
+					alu_a_in_rf_non_zero = 1'b1;
 					alu_b_in_constant = 1'b1;
 				end
 			5'b00011 : // Add

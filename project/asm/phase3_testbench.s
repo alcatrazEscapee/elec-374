@@ -39,8 +39,10 @@ target:
     mfhi r7             // r7 = 0
     mflo r6             // r6 = 0x91
     div r5, r4          // {HI, LO} = 4, 5
-    ldi r10, 0(r4)      // r10 = 5 setting up argument registers
-    ldi r11, 2(r5)      // r11 = 0x1F r8, r9, r10, and r11
+    
+    // Subroutine call: r8, r9 = return values, r10, r11 = parameters, r12 = address, r13 = zero
+    ldi r10, 0(r4)      // r10 = 5
+    ldi r11, 2(r5)      // r11 = 0x1F
     ldi r12, 0(r6)      // r12 = 0x91
     ldi r13, 0(r7)      // r13 = 0
     jal r12             // address of subroutine subA in r12 - return address in r15
@@ -48,9 +50,9 @@ target:
 
 .org 0x91               // procedure subA
 subA:
-    add r9, r10, r12    // r8 and r9 are return value registers
-    sub r8, r11, r13    // r9 = 0x96, r8 = 0x1F
-    sub r9, r9, r8      // r13 = 0x77
+    add r9, r10, r12    // r9 = 0x96
+    sub r8, r11, r13    // r8 = 0x1F
+    sub r9, r9, r8      // r9 = 0x77
     jr r15              // return
 
 .org 0x58

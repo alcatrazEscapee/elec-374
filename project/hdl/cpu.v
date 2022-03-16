@@ -31,7 +31,7 @@ module cpu (
 	wire pc_en, pc_increment, pc_in_alu, pc_in_rf_a;
 	wire ma_en;
 	wire memory_addr_in_pc, memory_addr_in_ma;
-	wire alu_a_in_rf, alu_a_in_pc;
+	wire alu_a_in_rf, alu_a_in_rf_non_zero, alu_a_in_pc;
 	wire alu_b_in_rf, alu_b_in_constant;
 	wire lo_en;
 	wire hi_en;
@@ -131,10 +131,11 @@ module cpu (
 	// Right input can be rX, constant C, or driven by FPU
 	// Control Signals: alu_a_in_rf, alu_a_in_pc, alu_b_in_rf, alu_b_in_constant
 	always @(*) begin
-		case ({fpu_mode, alu_a_in_rf, alu_a_in_pc})
-			3'b001 : alu_a_in = pc_out;
-			3'b010 : alu_a_in = rf_a_out;
-			3'b100 : alu_a_in = fpu_bridge_alu_a;
+		case ({fpu_mode, alu_a_in_rf_non_zero, alu_a_in_rf, alu_a_in_pc})
+			4'b0001 : alu_a_in = pc_out;
+			4'b0010 : alu_a_in = rf_a_out;
+			4'b0100 : alu_a_in = rf_a_addr == 4'b0 ? 32'b0 : rf_a_out; // Used for ldi, since r0 indicates zero
+			4'b1000 : alu_a_in = fpu_bridge_alu_a;
 			default : alu_a_in = 32'b0;
 		endcase
 
@@ -164,13 +165,14 @@ module cpu (
 
 	register_file #( .BITS(32), .WORDS(16) ) _rf (
 		.data_in(rf_in),
-		.addr_in(rf_en ? rf_z_addr : 4'b0), // R0 has a no-op write
+		.addr_in(rf_z_addr),
 		.addr_a(rf_a_addr),
 		.addr_b(rf_b_addr),
 		.data_a(rf_a_out),
 		.data_b(rf_b_out),
 		.clk(clk),
-		.clr(clr)
+		.clr(clr),
+		.en(rf_en)
 	);
 
 	register _pc  ( .d(pc_in),      .q(pc_out),     .en(pc_en),     .clk(clk), .clr(clr) );
@@ -229,7 +231,7 @@ module cpu (
 		.pc_increment(pc_increment), .pc_in_alu(pc_in_alu), .pc_in_rf_a(pc_in_rf_a),
 		.ma_en(ma_en),
 		.memory_addr_in_ma(memory_addr_in_ma), .memory_addr_in_pc(memory_addr_in_pc),
-		.alu_a_in_rf(alu_a_in_rf), .alu_a_in_pc(alu_a_in_pc),
+		.alu_a_in_rf(alu_a_in_rf), .alu_a_in_rf_non_zero(alu_a_in_rf_non_zero), .alu_a_in_pc(alu_a_in_pc),
 		.alu_b_in_rf(alu_b_in_rf), .alu_b_in_constant(alu_b_in_constant),
 		.lo_en(lo_en), .hi_en(hi_en),
 		.rf_in_alu(rf_in_alu), .rf_in_hi(rf_in_hi), .rf_in_lo(rf_in_lo), .rf_in_memory(rf_in_memory), .rf_in_fpu(rf_in_fpu), .rf_in_input(rf_in_input),
@@ -293,15 +295,33 @@ module cpu_test;
 		$display("Initializing Memory");
 		$readmemh("out/phase3_testbench.mem", _cpu._memory.data);
 		
-		while (~is_halted)
+		while (~is_halted) begin
+			$display("PC = %0d, r0=%0h, r3=%h, r4=%0h, r7=%0h, ma=%h, rf_b=%0h, m[58]=%0h, addr=%0h, madr_ma=%b, men=%b", _cpu._pc.q, _cpu._rf.data[0], _cpu._rf.data[3], _cpu._rf.data[4], _cpu._rf.data[7], _cpu._ma.q, _cpu.rf_b_out, _cpu._memory.data[9'h66], _cpu.memory_address, _cpu.memory_addr_in_ma, _cpu.memory_en);
 			#10;
+		end
 		
-		$display("IR=0x%h, PC=0x%h, MA=0x%h, MD=0x%h, HI=0x%h, LO=0x%h", _cpu.ir_out, _cpu.pc_out, _cpu.ma_out, _cpu.memory_out, _cpu.hi_out, _cpu.lo_out);
-		$display("R0=0x%h, R1=0x%h, R2=0x%h, R3=0x%h", _cpu._rf.data[0], _cpu._rf.data[1], _cpu._rf.data[2], _cpu._rf.data[3]);
-		$display("R4=0x%h, R5=0x%h, R6=0x%h, R7=0x%h", _cpu._rf.data[4], _cpu._rf.data[5], _cpu._rf.data[6], _cpu._rf.data[7]);
-		$display("R8=0x%h, R9=0x%h, R10=0x%h, R11=0x%h", _cpu._rf.data[8], _cpu._rf.data[9], _cpu._rf.data[10], _cpu._rf.data[11]);
-		$display("R12=0x%h, R13=0x%h, R14=0x%h, R15=0x%h", _cpu._rf.data[12], _cpu._rf.data[13], _cpu._rf.data[14], _cpu._rf.data[15]);
+		$display("Test | r0  | r0  = 0x00000001 | r0  = 0x%h", _cpu._rf.data[0]);
+		$display("Test | r1  | r1  = 0x0000019a | r1  = 0x%h", _cpu._rf.data[1]);
+		$display("Test | r2  | r2  = 0x000000cd | r2  = 0x%h", _cpu._rf.data[2]);
+		$display("Test | r3  | r3  = 0x00000001 | r3  = 0x%h", _cpu._rf.data[3]);
+		$display("Test | r4  | r4  = 0x00000005 | r4  = 0x%h", _cpu._rf.data[4]);
+		$display("Test | r5  | r5  = 0x0000001d | r5  = 0x%h", _cpu._rf.data[5]);
+		$display("Test | r6  | r6  = 0x00000091 | r6  = 0x%h", _cpu._rf.data[6]);
+		$display("Test | r7  | r7  = 0x00000000 | r7  = 0x%h", _cpu._rf.data[7]);
+		$display("Test | r8  | r8  = 0x0000001f | r8  = 0x%h", _cpu._rf.data[8]);
+		$display("Test | r9  | r9  = 0x00000077 | r9  = 0x%h", _cpu._rf.data[9]);
+		$display("Test | r10 | r10 = 0x00000005 | r10 = 0x%h", _cpu._rf.data[10]);
+		$display("Test | r11 | r11 = 0x0000001f | r11 = 0x%h", _cpu._rf.data[11]);
+		$display("Test | r12 | r12 = 0x00000091 | r12 = 0x%h", _cpu._rf.data[12]);
+		$display("Test | r13 | r13 = 0x00000000 | r13 = 0x%h", _cpu._rf.data[13]);
+		$display("Test | r14 | r14 = 0x00000000 | r14 = 0x%h", _cpu._rf.data[14]);
+		$display("Test | r15 | r15 = 0x00000028 | r15 = 0x%h", _cpu._rf.data[15]);
 		
+		$display("Test | Memory[0x58] | Memory[0x58] = 0x66 | Memory[0x58] = 0x%h", _cpu._memory.data[9'h66]);
+		$display("Test | Memory[0x75] | Memory[0x75] = 0xcd | Memory[0x75] = 0x%h", _cpu._memory.data[9'h75]);
+		
+		$display("Test | HI, LO | HI = 0x00000004, LO = 0x00000005 | HI = 0x%h, LO = 0x%h", _cpu._hi.q, _cpu._lo.q);
+
 		$finish;
 	end
 endmodule
