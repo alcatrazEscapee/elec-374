@@ -8,6 +8,7 @@ SRC  := src
 ASM  := asm
 WORK := work
 TEST := test
+GENERATED := generated
 SIMULATION := simulation/modelsim
 
 VLIB := vlib
@@ -17,12 +18,14 @@ VSIM := vsim -voptargs=+acc work.%s_test\nrun 10000ns
 ASSEMBLER := python assembler/main.py
 MIF_ASM := $(ASM)/phase4_testbench.s
 
-SOURCES  := $(shell find $(HDL) -name '*.v' -printf '%f ') pll.v
-ASSEMBLY := $(shell find $(ASM) -name '*.s' -printf '%f ')
+SOURCES     := $(shell find $(HDL) -name '*.v' -printf '%f ')
+GENERATED   := $(shell find $(GENERATED) -name '*.v' -printf '%f ')
+ALL_SOURCES := $(SOURCES) $(GENERATED)
+ASSEMBLY    := $(shell find $(ASM) -name '*.s' -printf '%f ')
 
-OUTPUTS  := $(SOURCES:%.v=$(WORK)/%/_primary.vhd)
-TESTS    := $(SOURCES:%.v=%)
-MEMORY   := $(ASSEMBLY:%.s=$(OUT)/%.mem)
+OUTPUTS := $(ALL_SOURCES:%.v=$(WORK)/%/_primary.vhd)
+TESTS   := $(SOURCES:%.v=%)
+MEMORY  := $(ASSEMBLY:%.s=$(OUT)/%.mem)
 
 VSIM_LOG := $(OUT)/vsim.log
 FPU_OUT  := $(OUT)/fpu.o
