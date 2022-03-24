@@ -249,10 +249,11 @@ endmodule
 
 
 /**
- * Testbench
- * Simulates various instructions by manually wiring in the correct control signals
+ * Phase 3 Testbench
+ * Simulates an entire program, from start to halt
+ * Verifies the register file and key memory locations.
  */
-`timescale 1ns/100ps
+`timescale 1ns/10ps
 module cpu_test;
 
 	reg [31:0] input_in;
@@ -270,16 +271,6 @@ module cpu_test;
 		.is_halted(is_halted)
 	);
 
-	/**
-	 * Computes and tests the T1 and T2 steps.
-	 */
-	task next_instruction(input [31:0] pc, input [127:0] assembly, input [31:0] instruction);
-		begin
-			#10 $display("Test | %0s @ T1 | pc=%0d, md=0x%h | pc=%0d, md=0x%h", assembly, pc + 1, instruction, _cpu._pc.q, _cpu._memory.data_out); // T1
-			#10 $display("Test | %0s @ T2 | ir=0x%h | ir=0x%h", assembly, instruction, _cpu._ir.q); // T2
-		end
-	endtask
-
 	// Clock
 	initial begin
 		clk <= 1'b1;
@@ -294,7 +285,7 @@ module cpu_test;
 		$display("Initializing Memory");
 		$readmemh("out/phase3_testbench.mem", _cpu._memory.data);
 		
-		while (~is_halted) #10;
+		while (~is_halted)  #10;
 		
 		$display("Test | r0  | r0  = 0x00000001 | r0  = 0x%h", _cpu._rf.data[0]);
 		$display("Test | r1  | r1  = 0x0000019a | r1  = 0x%h", _cpu._rf.data[1]);

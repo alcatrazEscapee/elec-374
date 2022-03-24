@@ -1,6 +1,6 @@
 
 SHELL = /bin/bash
-VPATH = hdl hdl/fpu
+VPATH = hdl hdl/fpu generated
 
 OUT  := out
 HDL  := hdl
@@ -15,8 +15,9 @@ VLOG := vlog +acc
 GCC  := gcc -std=c11
 VSIM := vsim -voptargs=+acc work.%s_test\nrun 10000ns
 ASSEMBLER := python assembler/main.py
+MIF_ASM := $(ASM)/phase4_testbench.s
 
-SOURCES  := $(shell find $(HDL) -name '*.v' -printf '%f ')
+SOURCES  := $(shell find $(HDL) -name '*.v' -printf '%f ') pll.v
 ASSEMBLY := $(shell find $(ASM) -name '*.s' -printf '%f ')
 
 OUTPUTS  := $(SOURCES:%.v=$(WORK)/%/_primary.vhd)
@@ -104,5 +105,5 @@ $(OUT)/%.mem : $(ASM)/%.s assembler/main.py
 	mkdir -p $(SIMULATION)/$(OUT)
 	cp $@ $(SIMULATION)/$@
 
-cpu.mif : $(ASM)/phase4_testbench.s assembler/main.py
+cpu.mif : $(MIF_ASM) assembler/main.py
 	$(ASSEMBLER) $< -m ./cpu.mif

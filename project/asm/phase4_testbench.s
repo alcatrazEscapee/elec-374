@@ -57,7 +57,7 @@ loop:
     out r4              // display the lower 8 bits of r4 on the two 7-segment displays 
     ldi r5, -1(r5)      // is the loop done? 
     brzr r5, 8          // yes = branch to done 
-    ld r6, 0xF0         // no = set r6 = 0xFFFF
+    ld r6, 0xF0         // no = set r6 = loop maximum
 loop2:
     ldi r6, -1(r6)      // delay, so you can see the numbers on the two 7-segment displays 
     nop 
@@ -84,4 +84,5 @@ subA:
 .org 0x58
     .mem 0x34
 .org 0xF0
-    .mem 0xFFFF
+    // 0xFFFF is too low of a loop counter, so we extend it by about 8x
+    .mem 0x100000

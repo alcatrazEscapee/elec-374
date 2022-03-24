@@ -6,6 +6,10 @@ module system (
 
 	// Inputs
 	input [7:0] switches_in,
+	
+	// Buttons are high (1) when unpressed, low (0) when pressed
+	// Button 0 = Reset
+	// Button 1 = Stop
 	input button_reset_in,
 	input button_stop_in,
 
@@ -21,21 +25,18 @@ module system (
 	input clk_50mhz
 );
 	// Internal control signals
-	wire clk, clr;
+	wire clk, clr, halt;
 
 	// Clock Divider
 	// DE0 Board has a 50 MHz clock available = 20 ns
 	// Our Design has a fmax of ~ 18 MHz
 	// Use a 4x Frequency divider, for a expected frequency of 12.5 MHz = 80 ns
 	wire [1:0] state_in, state_out;
-	
-	// register #( .BITS(2) ) _freq_div ( .d(state_in), .q(state_out), .en(1'b1), .clk(clk_50mhz), .clr(clr) );
-	// ripple_carry_adder #( .BITS(2) ) _freq_add ( .a(state_out), .b(2'b1), .sum(state_in), .c_in(1'b0), .c_out() );
-	
+
 	pll _freq_div ( .inclk0(clk_50mhz), .c0(clk) );
 	
-	//assign clk = clk_50mhz; // state_out[1]; // Top bit of the state is divide by four
-	assign clr = ~button_reset_in; // Async clear is active low, Button is active high
+	assign clr = button_reset_in; // Both active low
+	assign halt = ~button_stop_in; // Halt is active high
 
 	wire [31:0] output_out;
 	wire is_halted;
@@ -48,7 +49,7 @@ module system (
 		// Control
 		.clk(clk),
 		.clr(clr),
-		.halt(button_stop_in),
+		.halt(halt),
 		
 		// Outputs
 		.output_out(output_out),
