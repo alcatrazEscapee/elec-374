@@ -24,21 +24,29 @@ module system (
 	// Control
 	input clk_50mhz
 );
+	// PLL does not compile in ModelSim (cause unknown)
+	// Therefore, simulations reference the system_internal module.
+	wire clk;
+	
+	pll _freq_div ( .inclk0(clk_50mhz), .c0(clk) );
+	system_internal _sys ( switches_in, button_reset_in, button_stop_in, digit0_out, digit1_out, digit2_out, digit3_out, running, clk );
+endmodule
+
+
+module system_internal (
+	input [7:0] switches_in, input button_reset_in, button_stop_in,
+	output [7:0] digit0_out, digit1_out, digit2_out, digit3_out,
+	output running,
+	input clk
+);
 	// Internal control signals
-	wire clk, clr, halt;
+	wire clr, halt;
 
 	// Clock Divider
 	// DE0 Board has a 50 MHz clock available = 20 ns
-	// Our Design has a fmax of ~ 18 MHz
+	// Our Design has a fmax of ~ 16 MHz
 	// Use a 4x Frequency divider, for a expected frequency of 12.5 MHz = 80 ns
 	wire [1:0] state_in, state_out;
-
-	// Note:
-	// For some reason, when compiling via ModelSim command line, it cannot find the 'pll' module used here
-	// So to run automated tests, we comment it out
-	// When compiling for the board, the below line is swapped out
-	assign clk = clk_50mhz; // ModelSim
-	//pll _freq_div ( .inclk0(clk_50mhz), .c0(clk) ); // DE0 / Quartus
 	
 	assign clr = button_reset_in; // Both active low
 	assign halt = ~button_stop_in; // Halt is active high
@@ -78,7 +86,7 @@ module system_test;
 	wire running;
 	reg clk, clr;
 
-	system _system (
+	system_internal _system (
 		.switches_in(8'b10001000), // 0x88
 		.button_reset_in(clr),
 		.button_stop_in(1'b1),
@@ -89,7 +97,7 @@ module system_test;
 		.digit3_out(digit3),
 		
 		.running(running),
-		.clk_50mhz(clk)
+		.clk(clk)
 	);
 		
 	// Clock
@@ -97,6 +105,8 @@ module system_test;
 		clk <= 1'b1;
 		forever #1 clk <= ~clk;
 	end
+	
+	integer clock_cycles, instructions_executed;
 	
 	initial begin
 		// Initialize Memory
@@ -107,14 +117,24 @@ module system_test;
 		#2;
 		clr <= 1'b1; // Release reset, program starts
 		#2;
-	
-		while (running) #1;
+			
+		clock_cycles = 0;
+		instructions_executed = 0;
+		
+		while (running) begin
+			#2;
+			clock_cycles = clock_cycles + 1;
+			if (_system._cpu._control._sc.q == 0) instructions_executed = instructions_executed + 1;
+		end
 		
 		// Output the digits displayed on the 7-segments
 		$display("Test | Digit 0 7-Segment | 10001000 | %0b", digit0); // 0
 		$display("Test | Digit 1 7-Segment | 10010010 | %0b", digit1); // 0
 		$display("Test | Digit 2 7-Segment | 11000000 | %0b", digit2); // 5
 		$display("Test | Digit 3 7-Segment | 11000000 | %0b", digit3); // A
+		
+		$display("Performance Metrics");
+		$display("Clocks = %0d, Instructions = %0d", clock_cycles, instructions_executed);
 	
 		$finish;
 	end

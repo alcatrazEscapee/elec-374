@@ -276,6 +276,8 @@ module cpu_test;
 		clk <= 1'b1;
 		forever #5 clk <= ~clk;
 	end
+	
+	integer clock_cycles, instructions_executed;
 
 	initial begin
 		clr <= 1'b0;
@@ -285,7 +287,14 @@ module cpu_test;
 		$display("Initializing Memory");
 		$readmemh("out/phase3_testbench.mem", _cpu._memory.data);
 		
-		while (~is_halted)  #10;
+		clock_cycles = 0;
+		instructions_executed = 0;
+		
+		while (~is_halted) begin
+			#10;
+			clock_cycles = clock_cycles + 1;
+			if (_cpu._control._sc.q == 0) instructions_executed = instructions_executed + 1;
+		end
 		
 		$display("Test | r0  | r0  = 0x00000001 | r0  = 0x%h", _cpu._rf.data[0]);
 		$display("Test | r1  | r1  = 0x0000019a | r1  = 0x%h", _cpu._rf.data[1]);
@@ -308,6 +317,9 @@ module cpu_test;
 		$display("Test | Memory[0x6f] | Memory[0x6f] = 0x000000cd | Memory[0x6f] = 0x%h", _cpu._memory.data[9'h6f]);
 		
 		$display("Test | HI, LO | HI = 0x00000004, LO = 0x00000005 | HI = 0x%h, LO = 0x%h", _cpu._hi.q, _cpu._lo.q);
+		
+		$display("Performance Metrics");
+		$display("Clocks = %0d, Instructions = %0d", clock_cycles, instructions_executed);
 
 		$finish;
 	end
