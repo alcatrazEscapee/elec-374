@@ -1,6 +1,6 @@
 
 SHELL = /bin/bash
-VPATH = hdl hdl/fpu generated
+VPATH = hdl hdl/fpu generated db
 
 OUT  := out
 HDL  := hdl

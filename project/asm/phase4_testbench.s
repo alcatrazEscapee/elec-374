@@ -84,5 +84,6 @@ subA:
 .org 0x58
     .mem 0x34
 .org 0xF0
-    // 0xFFFF is too low of a loop counter, so we extend it by about 8x
-    .mem 0x100000
+    // For real-time execution, 0x100000 is a long enough delay
+    // When running in ModelSim, this is replaced with 0x1
+    .mem 0x1
