@@ -42,6 +42,7 @@
 !/project/reports/**/*.md
 !/project/reports/**/*.png
 !/project/reports/**/*.pdf
+!/project/reports/**/*.svg
 
 # Exclusions
 __pycache__
