@@ -3,12 +3,10 @@
 !/.gitignore
 !/.editorconfig
 !/README.md
+!/cpu.svg
 
 # Actions
 !/.github/**/*.yml
-
-# Reports / Spec Documents
-!/docs/**/*.pdf
 
 # Project Unique Files
 !/project/Makefile
@@ -37,12 +35,6 @@
 !/project/generated/**/*.ppf
 !/project/generated/**/*.qip
 !/project/generated/**/*.v
-
-# Reports / Assignments
-!/project/reports/**/*.md
-!/project/reports/**/*.png
-!/project/reports/**/*.pdf
-!/project/reports/**/*.svg
 
 # Exclusions
 __pycache__
